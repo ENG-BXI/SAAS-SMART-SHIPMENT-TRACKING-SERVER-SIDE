@@ -10,24 +10,44 @@ import {
   HttpException,
   ValidationPipe,
   ParseUUIDPipe,
+  ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 
-@Controller('company')
-export class CompanyController {
+@Controller({ path: 'company', version: '1' })
+export class CompanyControllerV1 {
   constructor(private readonly companyService: CompanyService) {}
   // Get All Company
   /**
    * @Get
+   * @Query page? , limit? ,search? ,filter?
    * @returns Array of Company
    */
   @Get()
-  async getAllCompany() {
-    const companies = await this.companyService.getAllCompany();
+  async getAllCompany(
+    @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
+    @Query('search') search?: string,
+    @Query('filter') filter?: string,
+  ) {
+    const page = pageQuery || 1;
+    const limit = limitQuery || 10;
+    const companies = await this.companyService.getAllCompany({
+      page,
+      limit,
+      search: search || '',
+      filter: filter || '',
+    });
     return {
-      data: companies,
+      data: {
+        data: companies,
+        page: page,
+        number_of_page: Math.ceil(companies.length / limit),
+        total: companies.length,
+      },
       message: 'Get Company successfully',
       status: HttpStatus.OK,
     };
@@ -87,6 +107,21 @@ export class CompanyController {
     return {
       data: company,
       message: 'Update Company successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  // Delete Company
+  /**
+   * @Delete /:id
+   * @Param id
+   * @returns Company
+   */
+  @Delete(':id')
+  async deleteCompany(@Param('id', ParseUUIDPipe) id: string) {
+    const company = await this.companyService.deleteCompany(id);
+    return {
+      data: company,
+      message: 'Delete Company successfully',
       status: HttpStatus.OK,
     };
   }

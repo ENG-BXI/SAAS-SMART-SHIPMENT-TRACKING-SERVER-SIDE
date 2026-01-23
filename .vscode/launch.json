@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "d:/pro/Full Stack Website/SAAS SMART SHIPMENT TRACKING/server-side/src/company",
-      "program": "d:/pro/Full Stack Website/SAAS SMART SHIPMENT TRACKING/server-side/src/company/build/Debug/outDebug",
+      "cwd": "d:/pro/Full Stack Website/SAAS SMART SHIPMENT TRACKING/server-side/src/V1/company",
+      "program": "d:/pro/Full Stack Website/SAAS SMART SHIPMENT TRACKING/server-side/src/V1/company/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

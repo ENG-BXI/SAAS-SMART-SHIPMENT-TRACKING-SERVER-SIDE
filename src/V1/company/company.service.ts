@@ -6,9 +6,42 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 @Injectable()
 export class CompanyService {
   constructor(private readonly prisma: PrismaService) {}
-  async getAllCompany() {
+  async getAllCompany({
+    page,
+    limit,
+    search,
+    filter,
+  }: {
+    page: number;
+    limit: number;
+    search: string;
+    filter: string;
+  }) {
     try {
-      const companies = await this.prisma.company.findMany();
+      const companies = await this.prisma.company.findMany({
+        where: {
+          AND: [
+            {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { companyEmail: { contains: search, mode: 'insensitive' } },
+                { location: { contains: search, mode: 'insensitive' } },
+              ],
+            },
+            // Add Filter Subreption
+          ],
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          companyEmail: true,
+          location: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
       return companies;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -95,6 +128,20 @@ export class CompanyService {
           updatedAt: new Date(),
         },
       });
+      return company;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async deleteCompany(id: string) {
+    try {
+      const existCompany = await this.prisma.company.findUnique({
+        where: { id },
+      });
+      if (!existCompany) {
+        throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
+      }
+      const company = await this.prisma.company.delete({ where: { id } });
       return company;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
