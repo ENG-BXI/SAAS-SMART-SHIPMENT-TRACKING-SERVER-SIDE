@@ -13,10 +13,24 @@ import {
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBody,
+} from '@nestjs/swagger';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 
+import {
+  CompanyResponseDto,
+  CompanyListResponseDto,
+} from './dto/company-response.dto';
+
+@ApiTags('Company')
 @Controller({ path: 'company', version: '1' })
 export class CompanyControllerV1 {
   constructor(private readonly companyService: CompanyService) {}
@@ -27,6 +41,35 @@ export class CompanyControllerV1 {
    * @returns Array of Company
    */
   @Get()
+  @ApiOperation({
+    summary: 'Retrieve all companies with pagination',
+    description:
+      'Fetches a list of companies. Supports searching by name/email/location and custom filtering.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by name, email, or location',
+  })
+  @ApiQuery({ name: 'filter', required: false, type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Success',
+    type: CompanyListResponseDto,
+  })
   async getAllCompany(
     @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
@@ -59,6 +102,25 @@ export class CompanyControllerV1 {
    * @returns Company
    */
   @Get(':id')
+  @ApiOperation({
+    summary: 'Get a company by ID',
+    description: 'Retrieve a single company details using its unique UUID.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The unique identifier of the company (UUID)',
+    type: String,
+    format: 'uuid',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Company details retrieved successfully.',
+    type: CompanyResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company not found.',
+  })
   async getCompanyById(@Param('id', ParseUUIDPipe) id: string) {
     const company = await this.companyService.getCompanyById(id);
     return {
@@ -75,6 +137,21 @@ export class CompanyControllerV1 {
    * @returns Company
    */
   @Post()
+  @ApiOperation({
+    summary: 'Create a new company',
+    description:
+      'Register a new company with necessary details (Name, Location, Email, Password).',
+  })
+  @ApiBody({ type: CreateCompanyDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Company created successfully.',
+    type: CompanyResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request. Validation failed or passwords do not match.',
+  })
   async createCompany(
     @Body(new ValidationPipe()) createCompanyDto: CreateCompanyDto,
   ) {
@@ -96,6 +173,26 @@ export class CompanyControllerV1 {
    * @returns Company
    */
   @Patch(':id')
+  @ApiOperation({
+    summary: 'Update a company',
+    description: 'Update existing company details by ID.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The unique identifier of the company (UUID)',
+    type: String,
+    format: 'uuid',
+  })
+  @ApiBody({ type: UpdateCompanyDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Company updated successfully.',
+    type: CompanyResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company not found.',
+  })
   async updateCompany(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ValidationPipe()) updateCompanyDto: UpdateCompanyDto,
@@ -117,6 +214,25 @@ export class CompanyControllerV1 {
    * @returns Company
    */
   @Delete(':id')
+  @ApiOperation({
+    summary: 'Delete a company',
+    description: 'Remove a company from the system by ID.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The unique identifier of the company (UUID)',
+    type: String,
+    format: 'uuid',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Company deleted successfully.',
+    type: CompanyResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company not found.',
+  })
   async deleteCompany(@Param('id', ParseUUIDPipe) id: string) {
     const company = await this.companyService.deleteCompany(id);
     return {
