@@ -29,6 +29,8 @@ import {
   CompanyResponseDto,
   CompanyListResponseDto,
 } from './dto/company-response.dto';
+import { IResponseWithPagination } from 'src/Common/interfaces/IResponseWithPagination.interface';
+import { Company } from './entities/company.entity';
 
 @ApiTags('Company')
 @Controller({ path: 'company', version: '1' })
@@ -75,21 +77,25 @@ export class CompanyControllerV1 {
     @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
     @Query('search') search?: string,
     @Query('filter') filter?: string,
-  ) {
+  ): Promise<IResponseWithPagination<Company>> {
     const page = pageQuery || 1;
     const limit = limitQuery || 10;
-    const companies = await this.companyService.getAllCompany({
+    const company = await this.companyService.getAllCompany({
       page,
       limit,
       search: search || '',
       filter: filter || '',
     });
+    const totalPages = Math.ceil(company.companiesNumber / limit);
     return {
       data: {
-        data: companies,
-        page: page,
-        number_of_page: Math.ceil(companies.length / limit),
-        total: companies.length,
+        data: company.companies,
+        currentPage: page,
+        pageSize: limit,
+        totalCount: company.companiesNumber,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrevious: page !== 1,
       },
       message: 'Get Company successfully',
       status: HttpStatus.OK,

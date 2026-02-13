@@ -7,7 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
-
+  app.enableCors();
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
   // Swagger Configuration
@@ -47,6 +47,6 @@ async function bootstrap() {
     customSiteTitle: 'SAAS Smart Shipment API Documentation',
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 8000);
 }
 bootstrap();

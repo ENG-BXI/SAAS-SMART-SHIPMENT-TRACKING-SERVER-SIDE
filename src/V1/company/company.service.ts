@@ -42,7 +42,12 @@ export class CompanyService {
           updatedAt: true,
         },
       });
-      return companies;
+      // TODO Temp Solution
+      const newCompanies = companies.map((company) => {
+        return { ...company, subscriptionStatus: 'active', numberOfClient: 0 };
+      });
+      const companiesNumber = await this.prisma.company.count();
+      return { companies: newCompanies, companiesNumber };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
