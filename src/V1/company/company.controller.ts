@@ -77,7 +77,7 @@ export class CompanyControllerV1 {
     @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
     @Query('search') search?: string,
     @Query('filter') filter?: string,
-  ): Promise<IResponseWithPagination<Company>> {
+  ): Promise<IResponseWithPagination> {
     const page = pageQuery || 1;
     const limit = limitQuery || 10;
     const company = await this.companyService.getAllCompany({

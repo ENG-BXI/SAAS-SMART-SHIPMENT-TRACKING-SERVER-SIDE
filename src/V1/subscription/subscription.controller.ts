@@ -6,79 +6,50 @@ import {
   Patch,
   Param,
   Delete,
+  HttpStatus,
+  ParseUUIDPipe,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
+
+import { IResponseWithPagination } from 'src/Common/interfaces/IResponseWithPagination.interface';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
-import {
-  SubscriptionResponseDto,
-  SubscriptionListResponseDto,
-} from './dto/subscription-response.dto';
 
 @ApiTags('Subscription')
 @Controller({ path: 'subscription', version: '1' })
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
-
-  @Post()
-  @ApiOperation({ summary: 'Create a new subscription' })
-  @ApiResponse({
-    status: 201,
-    description: 'Subscription created successfully.',
-    type: SubscriptionResponseDto,
-  })
-  create(@Body() createSubscriptionDto: CreateSubscriptionDto) {
-    return this.subscriptionService.create(createSubscriptionDto);
+  @Get('/')
+  async getAllSubscription(): Promise<IResponseWithPagination> {
+    const subscription = await this.subscriptionService.getAllSubscription();
+    return {
+      data: {
+        data: subscription,
+        currentPage: 0,
+        pageSize: 0,
+        totalCount: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrevious: false,
+      },
+      message: 'Get Subscription successfully',
+      status: HttpStatus.OK,
+    };
   }
-
-  @Get()
-  @ApiOperation({ summary: 'Get all subscriptions' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of subscriptions.',
-    type: SubscriptionListResponseDto,
-  })
-  findAll() {
-    return this.subscriptionService.findAll();
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a subscription by ID' })
-  @ApiParam({ name: 'id', description: 'Subscription ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Subscription details.',
-    type: SubscriptionResponseDto,
-  })
-  findOne(@Param('id') id: string) {
-    return this.subscriptionService.findOne(+id);
-  }
-
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update a subscription' })
-  @ApiParam({ name: 'id', description: 'Subscription ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Subscription updated successfully.',
-    type: SubscriptionResponseDto,
-  })
-  update(
-    @Param('id') id: string,
-    @Body() updateSubscriptionDto: UpdateSubscriptionDto,
+  @Post('/:companyId')
+  async addSubscription(
+    @Param('companyId', ParseUUIDPipe) companyId: string,
+    @Body(new ValidationPipe()) SubscriptionDto: CreateSubscriptionDto,
   ) {
-    return this.subscriptionService.update(+id, updateSubscriptionDto);
-  }
-
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a subscription' })
-  @ApiParam({ name: 'id', description: 'Subscription ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Subscription deleted successfully.',
-    type: SubscriptionResponseDto,
-  })
-  remove(@Param('id') id: string) {
-    return this.subscriptionService.remove(+id);
+    const newSubscription = await this.subscriptionService.addSubscription(
+      companyId,
+      SubscriptionDto,
+    );
+    return {
+      data: newSubscription,
+      message: 'Add Subscription successfully',
+      status: HttpStatus.OK,
+    };
   }
 }
