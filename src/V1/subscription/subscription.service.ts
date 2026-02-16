@@ -61,19 +61,33 @@ export class SubscriptionService {
     if (!company) {
       throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
     }
-    const duration = subscriptionType?.type === 'monthly' ? 1 : 12;
     let startDate = new Date();
     let endDate = new Date();
     // if Company has subscription set the new start subscription date to the company has
     // and set the end date to the company has + duration
     if (company.subscription) {
       startDate = company.subscription.startDate;
-      endDate.setMonth(company.subscription.endDate.getMonth() + duration);
+      let date = company.subscription.endDate.getDate();
+      let month;
+      let year;
+      if (subscriptionType.type == 'monthly') {
+        month = company.subscription.endDate.getMonth() + 1;
+        year = company.subscription.endDate.getFullYear();
+      } else {
+        month = company.subscription.endDate.getMonth();
+        year = company.subscription.endDate.getFullYear() + 1;
+      }
+      endDate.setMonth(month);
+      endDate.setFullYear(year);
       // to save what day is has endDate company
-      endDate.setDate(company.subscription.endDate.getDate());
+      endDate.setDate(date);
     } else {
       // if Company has no subscription set the new start subscription date to the current date
-      endDate.setMonth(endDate.getMonth() + duration);
+      if (subscriptionType.type == 'monthly') {
+        endDate.setMonth(endDate.getMonth() + 1);
+      } else {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      }
     }
     const data = {
       companyId,
