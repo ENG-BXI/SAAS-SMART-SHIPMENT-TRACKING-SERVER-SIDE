@@ -15,14 +15,14 @@ datasource db {
 }
 
 model company {
-  id              String        @id @unique @default(uuid())
-  name            String        @unique
-  location        String
-  subscription    subscription?
-  clients         client[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  users           user[]
+  id           String        @id @unique @default(uuid())
+  name         String        @unique
+  location     String
+  subscription subscription?
+  clients      client[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  users        user[]
 }
 
 model subscription {
@@ -37,8 +37,8 @@ model subscription {
 }
 
 model SubscriptionType {
-  id           String        @id @default(uuid())
-  type         String        @unique
+  id           String         @id @default(uuid())
+  type         String         @unique
   price        Float
   subscription subscription[]
 }
@@ -56,7 +56,8 @@ model client {
   companyId   String
   company     company      @relation(fields: [companyId], references: [id])
   contactWays contactWay[]
-  @@unique([name,companyId])
+
+  @@unique([name, companyId])
 }
 
 model contactWay {
@@ -64,7 +65,7 @@ model contactWay {
   text      String  @unique
   isPrimary Boolean @default(false)
   clientId  String
-  client    client  @relation(fields: [clientId], references: [id])
+  client    client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 model user {
