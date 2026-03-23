@@ -20,6 +20,49 @@ model company {
   location        String
   companyEmail    String   @unique
   companyPassword String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  subscription    subscription?
+  clients         client[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model subscription {
+  id        String             @id @default(uuid())
+  typeId    String
+  type      SubscriptionType   @relation(fields: [typeId], references: [id])
+  status    SubscriptionStatus @default(pending)
+  startDate DateTime
+  endDate   DateTime
+  company   company            @relation(fields: [companyId], references: [id])
+  companyId String             @unique
+}
+
+model SubscriptionType {
+  id           String         @id @default(uuid())
+  type         String         @unique
+  price        Float
+  subscription subscription[]
+}
+
+enum SubscriptionStatus {
+  pending
+  active
+  inactive
+  expired
+}
+
+model client {
+  id          String       @id @default(uuid())
+  name        String
+  companyId   String
+  company     company      @relation(fields: [companyId], references: [id])
+  contactWays contactWay[]
+}
+
+model contactWay {
+  id        String  @default(uuid())
+  text      String  @unique
+  isPrimary Boolean @default(false)
+  clientId  String
+  client    client  @relation(fields: [clientId], references: [id])
 }
