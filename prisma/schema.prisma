@@ -18,8 +18,6 @@ model company {
   id              String        @id @unique @default(uuid())
   name            String        @unique
   location        String
-  companyEmail    String        @unique
-  companyPassword String
   subscription    subscription?
   clients         client[]
   createdAt       DateTime      @default(now())
@@ -58,6 +56,7 @@ model client {
   companyId   String
   company     company      @relation(fields: [companyId], references: [id])
   contactWays contactWay[]
+  @@unique([name,companyId])
 }
 
 model contactWay {

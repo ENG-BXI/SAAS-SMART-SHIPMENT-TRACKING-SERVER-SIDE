@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-
+import * as bcrypt from 'bcrypt';
 @Injectable()
 export class CompanyService {
   constructor(private readonly prisma: PrismaService) {}
@@ -24,7 +24,6 @@ export class CompanyService {
             {
               OR: [
                 { name: { contains: search, mode: 'insensitive' } },
-                { companyEmail: { contains: search, mode: 'insensitive' } },
                 { location: { contains: search, mode: 'insensitive' } },
               ],
             },
@@ -36,7 +35,6 @@ export class CompanyService {
         select: {
           id: true,
           name: true,
-          companyEmail: true,
           location: true,
           createdAt: true,
           updatedAt: true,
@@ -65,37 +63,70 @@ export class CompanyService {
   }
   async createCompany(createCompanyDto: CreateCompanyDto) {
     try {
-      const existingCompany = await this.prisma.company.findFirst({
+      const existingCompany = await this.prisma.user.findFirst({
         where: {
           OR: [
-            { companyEmail: createCompanyDto.companyEmail },
-            { name: createCompanyDto.name },
+            { email: createCompanyDto.companyEmail },
+            {
+              company: {
+                name: createCompanyDto.name,
+              },
+            },
           ],
         },
       });
 
       if (existingCompany) {
         const message =
-          existingCompany.companyEmail === createCompanyDto.companyEmail
+          existingCompany.email === createCompanyDto.companyEmail
             ? 'Company with this email already exists'
             : 'Company with this name already exists';
         throw new HttpException(message, HttpStatus.BAD_REQUEST);
       }
-      const company = await this.prisma.company.create({
-        data: {
-          name: createCompanyDto.name,
-          companyEmail: createCompanyDto.companyEmail,
-          companyPassword: createCompanyDto.companyPassword,
-          location: createCompanyDto.location,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+      const hashedPassword = await bcrypt.hash(
+        createCompanyDto.companyPassword,
+        10,
+      );
+      const { company, user } = await this.prisma.$transaction(async (tx) => {
+        const company = await tx.company.create({
+          data: {
+            name: createCompanyDto.name,
+            location: createCompanyDto.location,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+        const user = await tx.user.create({
+          data: {
+            email: createCompanyDto.companyEmail,
+            password: hashedPassword,
+            userName: `Manager of ${createCompanyDto.name}`,
+            isAdmin: false,
+            isManager: true,
+            isEmployee: false,
+            isDriver: false,
+            companyId: company.id,
+          },
+          select: {
+            id: true,
+            email: true,
+            userName: true,
+            isAdmin: true,
+            isManager: true,
+            isEmployee: true,
+            isDriver: true,
+            companyId: true,
+          },
+        });
+        return { company, user };
       });
-      return company;
+
+      return { company, user };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
+
   async updateCompany(id: string, updateCompanyDto: UpdateCompanyDto) {
     try {
       const existingCompany = await this.prisma.company.findUnique({
@@ -104,36 +135,62 @@ export class CompanyService {
       if (!existingCompany) {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
-      const existingCompanyWithSameEmail = await this.prisma.company.findFirst({
+      const existingCompanyWithSameEmail = await this.prisma.user.findFirst({
         where: {
           OR: [
-            { companyEmail: updateCompanyDto.companyEmail },
-            { name: updateCompanyDto.name },
+            { email: updateCompanyDto.companyEmail },
+            { company: { name: updateCompanyDto.name } },
           ],
           // check all company but not current company by this id
           // because we are send same email and name when update another property
-          id: { not: id },
+          companyId: { not: id },
         },
       });
+
       if (existingCompanyWithSameEmail) {
         const message =
-          existingCompanyWithSameEmail.companyEmail ===
-          updateCompanyDto.companyEmail
+          existingCompanyWithSameEmail.email === updateCompanyDto.companyEmail
             ? 'Company with this email already exists'
             : 'Company with this name already exists';
         throw new HttpException(message, HttpStatus.BAD_REQUEST);
       }
-      const company = await this.prisma.company.update({
-        where: { id },
-        data: {
-          name: updateCompanyDto.name,
-          companyEmail: updateCompanyDto.companyEmail,
-          companyPassword: updateCompanyDto.companyPassword,
-          location: updateCompanyDto.location,
-          updatedAt: new Date(),
-        },
+      let hashedPassword;
+      if (updateCompanyDto.companyPassword) {
+        hashedPassword = await bcrypt.hash(
+          updateCompanyDto.companyPassword,
+          10,
+        );
+      }
+      const { company, user } = await this.prisma.$transaction(async (tx) => {
+        const company = await tx.company.update({
+          where: { id },
+          data: {
+            name: updateCompanyDto.name,
+            location: updateCompanyDto.location,
+            updatedAt: new Date(),
+          },
+        });
+        const user = await tx.user.update({
+          where: { id: existingCompany.id },
+          data: {
+            email: updateCompanyDto.companyEmail,
+            password: hashedPassword,
+            userName: `Manager of ${company.name}`,
+          },
+          select: {
+            id: true,
+            email: true,
+            userName: true,
+            isAdmin: true,
+            isManager: true,
+            isEmployee: true,
+            isDriver: true,
+            companyId: true,
+          },
+        });
+        return { company, user };
       });
-      return company;
+      return { company, user };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }

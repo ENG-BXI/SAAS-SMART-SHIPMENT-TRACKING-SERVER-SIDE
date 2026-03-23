@@ -15,7 +15,6 @@ export class SubscriptionService {
             select: {
               name: true,
               location: true,
-              companyEmail: true,
             },
           },
         },
