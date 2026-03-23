@@ -1,6 +1,6 @@
-export interface IResponseWithPagination<T> {
+export interface IResponseWithPagination {
   data: {
-    data: T[];
+    data: unknown;
     currentPage: number;
     pageSize: number;
     totalCount: number;

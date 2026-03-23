@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { VersioningType } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ResponseInterceptor } from './Common/interceptors/response.interceptor';
+import { ErrorsInterceptor } from './Common/interceptors/errors.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -46,7 +48,7 @@ async function bootstrap() {
     },
     customSiteTitle: 'SAAS Smart Shipment API Documentation',
   });
-
+  app.useGlobalInterceptors(new ErrorsInterceptor(), new ResponseInterceptor());
   await app.listen(process.env.PORT ?? 8000);
 }
 bootstrap();

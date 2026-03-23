@@ -39,8 +39,8 @@ model subscription {
 }
 
 model SubscriptionType {
-  id           String         @id @default(uuid())
-  type         String         @unique
+  id           String        @id @default(uuid())
+  type         String        @unique
   price        Float
   subscription subscription[]
 }
