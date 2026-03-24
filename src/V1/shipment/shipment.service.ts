@@ -362,6 +362,56 @@ export class ShipmentService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
-  editShipment() {}
-  deleteShipment() {}
+  async editShipment(
+    shipmenId: string,
+    Shipment: UpdateShipmentDto,
+    companyId: string,
+  ) {
+    try {
+      const existingShipment = await this.prisma.shipment.findUnique({
+        where: { id: shipmenId, companyId: companyId },
+      });
+      if (!existingShipment) {
+        throw new HttpException('Shipment not found', HttpStatus.NOT_FOUND);
+      }
+      const shipment = await this.prisma.shipment.update({
+        where: { id: shipmenId, companyId: companyId },
+        data: Shipment,
+        select: {
+          id: true,
+          shipmentNumber: true,
+          launchDate: true,
+          way: {
+            select: {
+              name: true,
+            },
+          },
+          driver: {
+            select: {
+              userName: true,
+            },
+          },
+        },
+      });
+      return shipment;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async deleteShipment(shipmenId: string, companyId: string) {
+    try {
+      const existingShipment = await this.prisma.shipment.findUnique({
+        where: { id: shipmenId, companyId: companyId },
+      });
+      if (!existingShipment) {
+        throw new HttpException('Shipment not found', HttpStatus.NOT_FOUND);
+      }
+      const shipment = await this.prisma.shipment.delete({
+        where: { id: shipmenId, companyId: companyId },
+      });
+      return shipment;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
 }

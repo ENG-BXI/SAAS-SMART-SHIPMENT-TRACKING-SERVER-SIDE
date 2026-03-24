@@ -13,6 +13,7 @@ import {
   HttpStatus,
   UseGuards,
   ValidationPipe,
+  Put,
 } from '@nestjs/common';
 import { ShipmentService } from './shipment.service';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
@@ -25,7 +26,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 export class ShipmentController {
   constructor(private readonly shipmentService: ShipmentService) {}
   @Get()
-  async getAllShipments(
+  async getCurrentShipments(
     @Req() req: Request,
     @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
@@ -37,6 +38,41 @@ export class ShipmentController {
     const page = pageQuery || 1;
     const limit = limitQuery || 10;
     const shipments = await this.shipmentService.getCurrentShipments(
+      req.user.companyId,
+      page,
+      limit,
+      search,
+    );
+    const totalPages = Math.ceil(shipments.shipmentCount / limit);
+    const hasNext = page < totalPages;
+    const hasPrevious = page !== 1;
+    return {
+      data: {
+        data: shipments.shipments,
+        totalCount: shipments.shipmentCount,
+        currentPage: page,
+        pageSize: limit,
+        totalPages,
+        hasNext,
+        hasPrevious,
+      },
+      message: 'Shipments fetched successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Get('finished')
+  async getFinishedShipment(
+    @Req() req: Request,
+    @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
+    @Query('search') search?: string,
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const page = pageQuery || 1;
+    const limit = limitQuery || 10;
+    const shipments = await this.shipmentService.getFinishedShipments(
       req.user.companyId,
       page,
       limit,
@@ -126,6 +162,41 @@ export class ShipmentController {
     return {
       data: shipment,
       message: 'Shipment created successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Put(':id')
+  async editShipment(
+    @Param('id') shipmentId: string,
+    @Body(new ValidationPipe()) shipmentDto: UpdateShipmentDto,
+    @Req() req: Request,
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const shipment = await this.shipmentService.editShipment(
+      shipmentId,
+      shipmentDto,
+      req.user.companyId,
+    );
+    return {
+      data: shipment,
+      message: 'Shipment updated successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Delete(':id')
+  async deleteShipment(@Param('id') shipmentId: string, @Req() req: Request) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const shipment = await this.shipmentService.deleteShipment(
+      shipmentId,
+      req.user.companyId,
+    );
+    return {
+      data: shipment,
+      message: 'Shipment deleted successfully',
       status: HttpStatus.OK,
     };
   }
