@@ -1,4 +1,4 @@
-import { IsDate, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsString, IsUUID } from 'class-validator';
 
 export class CreateShipmentDto {
   @IsString({ message: 'Shipment number is required' })
@@ -7,6 +7,6 @@ export class CreateShipmentDto {
   wayId: string;
   @IsUUID('all', { message: 'Driver ID is required' })
   driverId: string;
-  @IsDate({ message: 'Launch date is required' })
+  @IsDateString()
   launchDate: Date;
 }

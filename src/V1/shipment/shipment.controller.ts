@@ -36,7 +36,7 @@ export class ShipmentController {
     }
     const page = pageQuery || 1;
     const limit = limitQuery || 10;
-    const shipments = await this.shipmentService.getAllShipments(
+    const shipments = await this.shipmentService.getCurrentShipments(
       req.user.companyId,
       page,
       limit,

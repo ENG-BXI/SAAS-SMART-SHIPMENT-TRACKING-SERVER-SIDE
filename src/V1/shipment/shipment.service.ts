@@ -6,7 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class ShipmentService {
   constructor(private readonly prisma: PrismaService) {}
-  async getAllShipments(
+  async getCurrentShipments(
     companyId: string,
     page: number,
     limit: number,
@@ -17,6 +17,7 @@ export class ShipmentService {
         where: {
           AND: [
             { companyId: companyId },
+            { isCompleted: false },
             search
               ? {
                   OR: [
@@ -72,6 +73,109 @@ export class ShipmentService {
         where: {
           AND: [
             { companyId: companyId },
+            { isCompleted: false },
+            search
+              ? {
+                  OR: [
+                    {
+                      shipmentNumber: { contains: search, mode: 'insensitive' },
+                    },
+                    { launchDate: { gte: search } },
+                    { launchDate: { lte: search } },
+                    {
+                      way: { name: { contains: search, mode: 'insensitive' } },
+                    },
+                    {
+                      way: {
+                        points: {
+                          some: {
+                            name: { contains: search, mode: 'insensitive' },
+                          },
+                        },
+                      },
+                      driver: {
+                        userName: { contains: search, mode: 'insensitive' },
+                      },
+                    },
+                  ],
+                }
+              : {},
+          ],
+        },
+      });
+      return { shipments, shipmentCount };
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async getFinishedShipments(
+    companyId: string,
+    page: number,
+    limit: number,
+    search?: string,
+  ) {
+    try {
+      const shipments = await this.prisma.shipment.findMany({
+        where: {
+          AND: [
+            { companyId: companyId },
+            { isCompleted: true },
+            search
+              ? {
+                  OR: [
+                    {
+                      shipmentNumber: { contains: search, mode: 'insensitive' },
+                    },
+                    { launchDate: { gte: search } },
+                    { launchDate: { lte: search } },
+                    {
+                      way: { name: { contains: search, mode: 'insensitive' } },
+                    },
+                    {
+                      way: {
+                        points: {
+                          some: {
+                            name: { contains: search, mode: 'insensitive' },
+                          },
+                        },
+                      },
+                      driver: {
+                        userName: { contains: search, mode: 'insensitive' },
+                      },
+                    },
+                  ],
+                }
+              : {},
+          ],
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          shipmentNumber: true,
+          launchDate: true,
+          way: {
+            select: {
+              name: true,
+            },
+          },
+          currentPoint: {
+            select: {
+              name: true,
+            },
+          },
+          driver: {
+            select: {
+              userName: true,
+            },
+          },
+        },
+      });
+      const shipmentCount = await this.prisma.shipment.count({
+        where: {
+          AND: [
+            { companyId: companyId },
+            { isCompleted: true },
             search
               ? {
                   OR: [
