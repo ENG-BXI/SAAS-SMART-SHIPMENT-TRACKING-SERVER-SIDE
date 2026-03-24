@@ -20,6 +20,7 @@ import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { CreateShipmentItemDto } from './dto/create-shipment-item.dto';
 
 @Controller({ path: 'shipment', version: '1' })
 @UseGuards(AuthGuard)
@@ -147,6 +148,21 @@ export class ShipmentController {
       status: HttpStatus.OK,
     };
   }
+  @Post(':id/add-client-and-shipment-item')
+  async addClientAndShipmentItem(
+    @Param('id') shipmentId: string,
+    @Body(new ValidationPipe()) createShipmenItem: CreateShipmentItemDto,
+  ) {
+    const shipmentItem = await this.shipmentService.addClientAndShipmentItem(
+      shipmentId,
+      createShipmenItem,
+    );
+    return {
+      data: shipmentItem,
+      message: 'Client and shipment item added successfully',
+      status: HttpStatus.OK,
+    };
+  }
   @Post()
   async createNewShipment(
     @Body(new ValidationPipe()) shipmentDto: CreateShipmentDto,
@@ -197,6 +213,73 @@ export class ShipmentController {
     return {
       data: shipment,
       message: 'Shipment deleted successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  // Movement
+  @Put(':id/move-shipment-with-notification')
+  async moveShipmentWithNotification(
+    @Param('id') shipmentId: string,
+    @Req() req: Request,
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const shipment = await this.shipmentService.MoveShipmentWithNotification(
+      shipmentId,
+      req.user.companyId,
+    );
+    return {
+      data: shipment,
+      message: 'Shipment moved successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Put(':id/move-shipment-without-notification')
+  async moveShipmentWithoutNotification(
+    @Param('id') shipmentId: string,
+    @Req() req: Request,
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const shipment = await this.shipmentService.MoveShipmentWithoutNotification(
+      shipmentId,
+      req.user.companyId,
+    );
+    return {
+      data: shipment,
+      message: 'Shipment moved successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Put(':id/pause-shipment')
+  async pauseShipment(@Param('id') shipmentId: string, @Req() req: Request) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const shipment = await this.shipmentService.pauseShipment(
+      shipmentId,
+      req.user.companyId,
+    );
+    return {
+      data: shipment,
+      message: 'Shipment paused successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Put(':id/resume-shipment')
+  async resumeShipment(@Param('id') shipmentId: string, @Req() req: Request) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const shipment = await this.shipmentService.resumeShipment(
+      shipmentId,
+      req.user.companyId,
+    );
+    return {
+      data: shipment,
+      message: 'Shipment resumed successfully',
       status: HttpStatus.OK,
     };
   }

@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateShipmentItemDto } from './dto/create-shipment-item.dto';
 
 @Injectable()
 export class ShipmentService {
@@ -239,6 +240,9 @@ export class ShipmentService {
               },
             },
           });
+          if (!shipment) {
+            throw new HttpException('Shipment not found', HttpStatus.NOT_FOUND);
+          }
           const clients = await tx.client.count({
             where: {
               shipments: {
@@ -334,28 +338,87 @@ export class ShipmentService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
+  async addClientAndShipmentItem(
+    shipmentId: string,
+    createShipmenItem: CreateShipmentItemDto,
+  ) {
+    try {
+      const shipmentItem = await this.prisma.$transaction(async (tx) => {
+        const existShipment = await tx.shipment.findUnique({
+          where: { id: shipmentId },
+        });
+        if (!existShipment) {
+          throw new HttpException('Shipment not found', HttpStatus.NOT_FOUND);
+        }
+        const existClient = await tx.client.findUnique({
+          where: { id: createShipmenItem.clientId },
+        });
+        if (!existClient) {
+          throw new HttpException('Client not found', HttpStatus.NOT_FOUND);
+        }
+        const data = createShipmenItem.items.map((item) => {
+          return {
+            clientId: createShipmenItem.clientId,
+            name: item.name,
+            quantity: item.quantity,
+            isBreakable: item.isBreakable,
+            shipmentId: shipmentId,
+          };
+        });
+        const shipmentItem = await tx.shipmentItem.createMany({
+          data,
+        });
+        return shipmentItem;
+      });
+      return shipmentItem;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
   async createNewShipment(Shipment: CreateShipmentDto, companyId: string) {
     try {
-      const shipment = await this.prisma.shipment.create({
-        data: {
-          ...Shipment,
-          companyId: companyId,
-        },
-        select: {
-          id: true,
-          shipmentNumber: true,
-          launchDate: true,
-          way: {
-            select: {
-              name: true,
+      const { shipment } = await this.prisma.$transaction(async (tx) => {
+        const isWayExist = await tx.way.findUnique({
+          where: { id: Shipment.wayId, companyId: companyId },
+          select: { id: true },
+        });
+        if (!isWayExist) {
+          throw new HttpException('Way not found', HttpStatus.NOT_FOUND);
+        }
+        const firstPointInWay = await tx.point.findFirst({
+          where: { wayId: Shipment.wayId },
+          orderBy: { order: 'asc' },
+          select: { id: true },
+        });
+        if (!firstPointInWay?.id) {
+          throw new HttpException(
+            'Way has no points in Way to start shipment',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        const shipment = await tx.shipment.create({
+          data: {
+            ...Shipment,
+            companyId: companyId,
+            currentPointId: firstPointInWay?.id,
+          },
+          select: {
+            id: true,
+            shipmentNumber: true,
+            launchDate: true,
+            way: {
+              select: {
+                name: true,
+              },
+            },
+            driver: {
+              select: {
+                userName: true,
+              },
             },
           },
-          driver: {
-            select: {
-              userName: true,
-            },
-          },
-        },
+        });
+        return { shipment };
       });
       return shipment;
     } catch (error) {
@@ -408,6 +471,196 @@ export class ShipmentService {
       }
       const shipment = await this.prisma.shipment.delete({
         where: { id: shipmenId, companyId: companyId },
+      });
+      return shipment;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  // Movement
+  async MoveShipmentWithNotification(shipmenId: string, companyId: string) {
+    try {
+      const { shipment } = await this.prisma.$transaction(async (tx) => {
+        // Check if Shipment Exist
+        const existingShipment = await tx.shipment.findUnique({
+          where: { id: shipmenId, companyId: companyId },
+        });
+        if (!existingShipment) {
+          throw new HttpException('Shipment not found', HttpStatus.NOT_FOUND);
+        }
+        // Check if Shipment is Completed
+        const isShipmentComplete = await tx.shipment.findUnique({
+          where: { id: shipmenId, companyId: companyId, isCompleted: true },
+        });
+        if (isShipmentComplete) {
+          throw new HttpException(
+            'Shipment is already completed',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        // Get Order From Current Point
+        const currentPoint = await tx.shipment.findUnique({
+          where: { id: shipmenId, companyId: companyId },
+          select: {
+            currentPointId: true,
+            currentPoint: { select: { order: true } },
+          },
+        });
+        // Get Next Point
+        const nextPoint = currentPoint?.currentPoint?.order! + 1;
+
+        // Find Next Point
+        const NextPoint = await tx.point.findFirst({
+          where: { order: nextPoint, wayId: existingShipment.wayId },
+          select: { id: true },
+        });
+        // Check if Next Point Exist
+        if (!NextPoint) {
+          throw new HttpException(
+            'Next point not found Check Your Way',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+        // Get Last Point
+        const lastPoint = await tx.point.findFirst({
+          where: { wayId: existingShipment.wayId },
+          select: { id: true },
+          orderBy: { order: 'desc' },
+        });
+        const isComplete = lastPoint?.id === NextPoint.id;
+        // Update Shipment
+        const shipment = await tx.shipment.update({
+          where: { id: shipmenId, companyId: companyId },
+          data: { currentPointId: NextPoint.id, isCompleted: isComplete },
+        });
+        // Add Notification
+        return { shipment };
+      });
+      return shipment;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async MoveShipmentWithoutNotification(shipmenId: string, companyId: string) {
+    try {
+      const { shipment } = await this.prisma.$transaction(async (tx) => {
+        // Check if Shipment Exist
+        const existingShipment = await tx.shipment.findUnique({
+          where: { id: shipmenId, companyId: companyId },
+        });
+        if (!existingShipment) {
+          throw new HttpException('Shipment not found', HttpStatus.NOT_FOUND);
+        }
+        // Check if Shipment is Completed
+        const isShipmentComplete = await tx.shipment.findUnique({
+          where: { id: shipmenId, companyId: companyId, isCompleted: true },
+        });
+        if (isShipmentComplete) {
+          throw new HttpException(
+            'Shipment is already completed',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        // Get Order From Current Point
+        const currentPoint = await tx.shipment.findUnique({
+          where: { id: shipmenId, companyId: companyId },
+          select: {
+            currentPointId: true,
+            currentPoint: { select: { order: true } },
+          },
+        });
+        // Get Next Point
+        const nextPoint = currentPoint?.currentPoint?.order! + 1;
+
+        // Find Next Point
+        const NextPoint = await tx.point.findFirst({
+          where: { order: nextPoint, wayId: existingShipment.wayId },
+          select: { id: true },
+        });
+        // Check if Next Point Exist
+        if (!NextPoint) {
+          throw new HttpException(
+            'Next point not found Check Your Way',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+        // Get Last Point
+        const lastPoint = await tx.point.findFirst({
+          where: { wayId: existingShipment.wayId },
+          select: { id: true },
+          orderBy: { order: 'desc' },
+        });
+        const isComplete = lastPoint?.id === NextPoint.id;
+        // Update Shipment
+        const shipment = await tx.shipment.update({
+          where: { id: shipmenId, companyId: companyId },
+          data: { currentPointId: NextPoint.id, isCompleted: isComplete },
+        });
+        return { shipment };
+      });
+      return shipment;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async pauseShipment(shipmentId: string, companyId: string) {
+    try {
+      const { shipment } = await this.prisma.$transaction(async (tx) => {
+        // Check if Shipment Exist
+        const existingShipment = await tx.shipment.findUnique({
+          where: { id: shipmentId, companyId: companyId },
+        });
+        if (!existingShipment) {
+          throw new HttpException('Shipment not found', HttpStatus.NOT_FOUND);
+        }
+        // Check if Shipment is Completed
+        const isShipmentComplete = await tx.shipment.findUnique({
+          where: { id: shipmentId, companyId: companyId, isCompleted: true },
+        });
+        if (isShipmentComplete) {
+          throw new HttpException(
+            'Shipment is already completed',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        // Update Shipment
+        const shipment = await tx.shipment.update({
+          where: { id: shipmentId, companyId: companyId },
+          data: { isPaused: true },
+        });
+        return { shipment };
+      });
+      return shipment;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async resumeShipment(shipmentId: string, companyId: string) {
+    try {
+      const { shipment } = await this.prisma.$transaction(async (tx) => {
+        // Check if Shipment Exist
+        const existingShipment = await tx.shipment.findUnique({
+          where: { id: shipmentId, companyId: companyId },
+        });
+        if (!existingShipment) {
+          throw new HttpException('Shipment not found', HttpStatus.NOT_FOUND);
+        }
+        // Check if Shipment is Completed
+        const isShipmentNotPaused = await tx.shipment.findUnique({
+          where: { id: shipmentId, companyId: companyId, isPaused: false },
+        });
+        if (isShipmentNotPaused) {
+          throw new HttpException(
+            'Shipment is already running',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        // Update Shipment
+        const shipment = await tx.shipment.update({
+          where: { id: shipmentId, companyId: companyId },
+          data: { isPaused: false },
+        });
+        return { shipment };
       });
       return shipment;
     } catch (error) {
