@@ -23,6 +23,7 @@ model company {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   users        user[]
+  ways         way[]
 }
 
 model subscription {
@@ -61,7 +62,7 @@ model client {
 }
 
 model contactWay {
-  id        String  @default(uuid())
+  id        String  @id @default(uuid())
   text      String  @unique
   isPrimary Boolean @default(false)
   clientId  String
@@ -69,7 +70,7 @@ model contactWay {
 }
 
 model user {
-  id         String   @unique @default(uuid())
+  id         String   @id @default(uuid())
   userName   String
   email      String   @unique
   password   String
@@ -79,4 +80,25 @@ model user {
   isDriver   Boolean  @default(false)
   companyId  String?
   company    company? @relation(fields: [companyId], references: [id])
+}
+
+model way {
+  id        String  @id @default(uuid())
+  name      String
+  companyId String
+  company   company @relation(fields: [companyId], references: [id])
+  points    point[]
+
+  @@unique([name, companyId])
+}
+
+model point {
+  id    String @id @default(uuid())
+  name  String
+  order Int
+  wayId String
+  way   way    @relation(fields: [wayId], references: [id], onDelete: Cascade)
+
+  @@unique([wayId, name])
+  @@unique([wayId, order])
 }
