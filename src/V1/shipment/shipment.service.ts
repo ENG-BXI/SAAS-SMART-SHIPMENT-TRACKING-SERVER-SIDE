@@ -108,8 +108,8 @@ export class ShipmentService {
   }
   async getShipmentById(shipmentId: string, companyId: string) {
     try {
-      const { shipment, clients, shipmentItems, shipmentItemsCount } =
-        await this.prisma.$transaction(async (tx) => {
+      const { shipment, clients } = await this.prisma.$transaction(
+        async (tx) => {
           const shipment = await tx.shipment.findUnique({
             where: { id: shipmentId, companyId: companyId },
             select: {
@@ -144,10 +144,50 @@ export class ShipmentService {
               },
             },
           });
+
+          return { shipment, clients };
+        },
+      );
+      const shipments = {
+        ...shipment,
+        clients,
+      };
+      return shipments;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async getShipmentItems(
+    shipmentId: string,
+    companyId: string,
+    page: number,
+    limit: number,
+    search?: string,
+  ) {
+    try {
+      const { shipmentItems, shipmentItemsCount } =
+        await this.prisma.$transaction(async (tx) => {
           const shipmentItems = await tx.shipmentItem.findMany({
             where: {
               shipmentId: shipmentId,
+              shipment: {
+                companyId: companyId,
+              },
+              ...(search
+                ? {
+                    OR: [
+                      { name: { contains: search, mode: 'insensitive' } },
+                      {
+                        client: {
+                          name: { contains: search, mode: 'insensitive' },
+                        },
+                      },
+                    ],
+                  }
+                : {}),
             },
+            skip: (page - 1) * limit,
+            take: limit,
             select: {
               id: true,
               client: {
@@ -160,23 +200,64 @@ export class ShipmentService {
               isBreakable: true,
             },
           });
-          const shipmentItemsCount = shipmentItems.reduce((acc, item) => {
+          const shipmentItem = await tx.shipmentItem.findMany({
+            where: {
+              shipmentId: shipmentId,
+              shipment: {
+                companyId: companyId,
+              },
+              ...(search
+                ? {
+                    OR: [
+                      { name: { contains: search, mode: 'insensitive' } },
+                      {
+                        client: {
+                          name: { contains: search, mode: 'insensitive' },
+                        },
+                      },
+                    ],
+                  }
+                : {}),
+            },
+          });
+          const shipmentItemsCount = shipmentItem.reduce((acc, item) => {
             return acc + item.quantity;
           }, 0);
-          return { shipment, clients, shipmentItems, shipmentItemsCount };
+          return { shipmentItems, shipmentItemsCount };
         });
-      const shipments = {
-        ...shipment,
-        clients,
-        shipmentItems,
-        shipmentItemsCount,
-      };
-      return shipments;
+      return { shipmentItems, shipmentItemsCount };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
-  createNewShipment() {}
+  async createNewShipment(Shipment: CreateShipmentDto, companyId: string) {
+    try {
+      const shipment = await this.prisma.shipment.create({
+        data: {
+          ...Shipment,
+          companyId: companyId,
+        },
+        select: {
+          id: true,
+          shipmentNumber: true,
+          launchDate: true,
+          way: {
+            select: {
+              name: true,
+            },
+          },
+          driver: {
+            select: {
+              userName: true,
+            },
+          },
+        },
+      });
+      return shipment;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
   editShipment() {}
   deleteShipment() {}
 }

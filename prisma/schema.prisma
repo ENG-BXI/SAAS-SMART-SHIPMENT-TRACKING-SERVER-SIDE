@@ -133,7 +133,7 @@ model shipment {
   id             String         @id @default(uuid())
   shipmentNumber String         @unique
   launchDate     DateTime
-  endDate        DateTime
+  endDate        DateTime?
   wayId          String
   way            way            @relation(fields: [wayId], references: [id], onDelete: Cascade)
   currentPointId String?
