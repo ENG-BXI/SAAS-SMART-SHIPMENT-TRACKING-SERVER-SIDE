@@ -15,14 +15,14 @@ datasource db {
 }
 
 model company {
-  id              String        @id @unique @default(uuid())
-  name            String        @unique
-  location        String
-  companyEmail    String        @unique
-  companyPassword String
-  subscription    subscription?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id           String        @id @unique @default(uuid())
+  name         String        @unique
+  location     String
+  subscription subscription?
+  clients      client[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  users        user[]
 }
 
 model subscription {
@@ -37,8 +37,8 @@ model subscription {
 }
 
 model SubscriptionType {
-  id           String        @id @default(uuid())
-  type         String        @unique
+  id           String         @id @default(uuid())
+  type         String         @unique
   price        Float
   subscription subscription[]
 }
@@ -48,4 +48,35 @@ enum SubscriptionStatus {
   active
   inactive
   expired
+}
+
+model client {
+  id          String       @id @default(uuid())
+  name        String
+  companyId   String
+  company     company      @relation(fields: [companyId], references: [id])
+  contactWays contactWay[]
+
+  @@unique([name, companyId])
+}
+
+model contactWay {
+  id        String  @default(uuid())
+  text      String  @unique
+  isPrimary Boolean @default(false)
+  clientId  String
+  client    client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model user {
+  id         String   @unique @default(uuid())
+  userName   String
+  email      String   @unique
+  password   String
+  isAdmin    Boolean  @default(false)
+  isManager  Boolean  @default(false)
+  isEmployee Boolean  @default(true)
+  isDriver   Boolean  @default(false)
+  companyId  String?
+  company    company? @relation(fields: [companyId], references: [id])
 }
