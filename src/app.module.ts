@@ -8,6 +8,7 @@ import { ClientModule } from './V1/client/client.module';
 import { AuthModule } from './V1/auth/auth.module';
 import { UserModule } from './V1/user/user.module';
 import { WayModule } from './V1/way/way.module';
+import { NoteModule } from './V1/note/note.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { WayModule } from './V1/way/way.module';
     AuthModule,
     UserModule,
     WayModule,
+    NoteModule,
   ],
   controllers: [AppController],
   providers: [AppService],

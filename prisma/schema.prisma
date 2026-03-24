@@ -24,6 +24,7 @@ model company {
   updatedAt    DateTime      @updatedAt
   users        user[]
   ways         way[]
+  notes        note[]
 }
 
 model subscription {
@@ -101,4 +102,21 @@ model point {
 
   @@unique([wayId, name])
   @@unique([wayId, order])
+}
+
+model note {
+  id        String   @id @default(uuid())
+  type      NoteType
+  text      String
+  createdAt DateTime @default(now())
+  companyId String
+  company   company  @relation(fields: [companyId], references: [id])
+}
+enum NoteType {
+  complaint
+  inquiry
+  suggestion
+  compliment
+  feedback
+  other
 }
