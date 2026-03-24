@@ -6,10 +6,22 @@ import { UpdateClientDto } from './dto/update-client.dto';
 @Injectable()
 export class ClientService {
   constructor(private readonly prisma: PrismaService) {}
-  async getAllClient(companyId: string) {
+  async getAllClient(
+    companyId: string,
+    page: number,
+    limit: number,
+    search?: string,
+  ) {
     try {
       const clients = await this.prisma.client.findMany({
-        where: { companyId: companyId },
+        where: {
+          AND: [
+            { companyId: companyId },
+            search ? { name: { contains: search, mode: 'insensitive' } } : {},
+          ],
+        },
+        skip: (page - 1) * limit,
+        take: limit,
         select: {
           id: true,
           name: true,
@@ -21,7 +33,15 @@ export class ClientService {
           },
         },
       });
-      return clients;
+      const clientCount = await this.prisma.client.count({
+        where: {
+          AND: [
+            { companyId: companyId },
+            search ? { name: { contains: search, mode: 'insensitive' } } : {},
+          ],
+        },
+      });
+      return { clients, clientCount };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
@@ -51,16 +71,11 @@ export class ClientService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
-  async editClient(
-    client: UpdateClientDto,
-    clientId: string,
-    companyId: string,
-  ) {
+  async editClient(client: UpdateClientDto, clientId: string) {
     try {
       const existClient = await this.prisma.client.findUnique({
         where: {
           id: clientId,
-          companyId: companyId,
         },
       });
       if (!existClient) {
@@ -98,12 +113,11 @@ export class ClientService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
-  async deleteClient(clientId: string, companyId: string) {
+  async deleteClient(clientId: string) {
     try {
       const deletedClient = await this.prisma.client.delete({
         where: {
           id: clientId,
-          companyId: companyId,
         },
       });
       return deletedClient;

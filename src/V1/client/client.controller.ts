@@ -11,31 +11,60 @@ import {
   Put,
   Param,
   Delete,
+  Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ClientService } from './client.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { IResponseWithPagination } from 'src/Common/interfaces/IResponseWithPagination.interface';
 
 @Controller({ path: 'client', version: '1' })
 @UseGuards(AuthGuard)
 export class ClientController {
   constructor(private readonly clientService: ClientService) {}
   @Get()
-  async getAllClients(@Req() req: Request) {
+  async getAllClients(
+    @Req() req: Request,
+    @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
+    @Query('search') search?: string,
+  ): Promise<IResponseWithPagination> {
     if (!req.user) {
       throw new UnauthorizedException('User not found');
     }
-    const clients = await this.clientService.getAllClient(req.user.companyId);
+    const page = pageQuery || 1;
+    const limit = limitQuery || 10;
+    const clients = await this.clientService.getAllClient(
+      req.user.companyId,
+      page,
+      limit,
+      search,
+    );
+    const totalPages = Math.ceil(clients.clientCount / limit);
+    const hasNext = page < totalPages;
+    const hasPrevious = page !== 1;
     return {
-      data: clients,
+      data: {
+        data: clients.clients,
+        totalCount: clients.clientCount,
+        currentPage: page,
+        pageSize: limit,
+        totalPages,
+        hasNext,
+        hasPrevious,
+      },
       message: 'Clients fetched successfully',
       status: HttpStatus.OK,
     };
   }
   @Post()
-  async addNewClient(@Body(new ValidationPipe()) client: CreateClientDto, @Req() req: Request) {
+  async addNewClient(
+    @Body(new ValidationPipe()) client: CreateClientDto,
+    @Req() req: Request,
+  ) {
     if (!req.user) {
       throw new UnauthorizedException('User not found');
     }
@@ -53,16 +82,8 @@ export class ClientController {
   async editClient(
     @Body(new ValidationPipe()) client: UpdateClientDto,
     @Param('id') clientId: string,
-    @Req() req: Request,
   ) {
-    if (!req.user) {
-      throw new UnauthorizedException('User not found');
-    }
-    const updatedClient = await this.clientService.editClient(
-      client,
-      clientId,
-      req.user.companyId,
-    );
+    const updatedClient = await this.clientService.editClient(client, clientId);
     return {
       data: updatedClient,
       message: 'Client updated successfully',
@@ -70,17 +91,8 @@ export class ClientController {
     };
   }
   @Delete(':id')
-  async deleteClient(
-    @Param('id') clientId: string,
-    @Req() req: Request,
-  ) {
-    if (!req.user) {
-      throw new UnauthorizedException('User not found');
-    }
-    const deletedClient = await this.clientService.deleteClient(
-      clientId,
-      req.user.companyId,
-    );
+  async deleteClient(@Param('id') clientId: string) {
+    const deletedClient = await this.clientService.deleteClient(clientId);
     return {
       data: deletedClient,
       message: 'Client deleted successfully',
