@@ -55,16 +55,19 @@ export class ShipmentService {
           launchDate: true,
           way: {
             select: {
+              id:true,
               name: true,
             },
           },
           currentPoint: {
             select: {
+              id:true,
               name: true,
             },
           },
           driver: {
             select: {
+              id:true,
               userName: true,
             },
           },
@@ -157,16 +160,19 @@ export class ShipmentService {
           launchDate: true,
           way: {
             select: {
+              id:true,
               name: true,
             },
           },
           currentPoint: {
             select: {
+              id:true,
               name: true,
             },
           },
           driver: {
             select: {
+              id:true,
               userName: true,
             },
           },
