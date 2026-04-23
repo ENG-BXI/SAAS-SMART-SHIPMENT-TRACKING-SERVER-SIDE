@@ -6,13 +6,10 @@ import { ResponseInterceptor } from './Common/interceptors/response.interceptor'
 import { ErrorsInterceptor } from './Common/interceptors/errors.interceptor';
 
 async function bootstrap() {
-  console.log('1 - before create');
   const app = await NestFactory.create(AppModule);
-  console.log('2 - after create');
   app.setGlobalPrefix('api');
   app.enableCors();
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-  console.log('3 - after setGlobalPrefix');
   // Swagger Configuration
   const config = new DocumentBuilder()
     .setTitle('🚀SAAS Smart Shipment Tracking - API Engine')
@@ -39,7 +36,6 @@ async function bootstrap() {
       'JWT-auth', // This name must match the one used in @ApiBearerAuth()
     )
     .build();
-  console.log('4 - after config');
   if (process.env.NODE_ENV !== 'production') {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document, {
@@ -52,9 +48,7 @@ async function bootstrap() {
     });
   }
 
-  console.log('5 - before Global Interceptor');
   app.useGlobalInterceptors(new ErrorsInterceptor(), new ResponseInterceptor());
-  console.log('6 - after Global Interceptor');
   await app.listen(process.env.PORT ?? 8000);
 }
 bootstrap();
