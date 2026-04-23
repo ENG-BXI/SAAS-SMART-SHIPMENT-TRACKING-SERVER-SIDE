@@ -109,4 +109,16 @@ export class UserController {
       status: HttpStatus.OK,
     };
   }
+  @Get('drivers')
+  async getAllDrivers(@Req() req: Request) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const drivers = await this.userService.getAllDrivers(req.user.companyId);
+    return {
+      data: drivers,
+      message: 'Drivers fetched successfully',
+      status: HttpStatus.OK,
+    };
+  }
 }

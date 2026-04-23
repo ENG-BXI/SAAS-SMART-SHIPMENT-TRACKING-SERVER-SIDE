@@ -26,7 +26,7 @@ import { CreateShipmentItemDto } from './dto/create-shipment-item.dto';
 @UseGuards(AuthGuard)
 export class ShipmentController {
   constructor(private readonly shipmentService: ShipmentService) {}
-  @Get()
+  @Get('current')
   async getCurrentShipments(
     @Req() req: Request,
     @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
@@ -111,58 +111,6 @@ export class ShipmentController {
       status: HttpStatus.OK,
     };
   }
-  @Get(':id/items')
-  async getShipmentItems(
-    @Param('id') shipmentId: string,
-    @Req() req: Request,
-    @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
-    @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
-    @Query('search') search?: string,
-  ) {
-    if (!req.user) {
-      throw new UnauthorizedException('User not found');
-    }
-    const page = pageQuery || 1;
-    const limit = limitQuery || 10;
-    const shipmentItems = await this.shipmentService.getShipmentItems(
-      shipmentId,
-      req.user.companyId,
-      page,
-      limit,
-      search,
-    );
-    const totalPages = Math.ceil(shipmentItems.shipmentItemsCount / limit);
-    const hasNext = page < totalPages;
-    const hasPrevious = page !== 1;
-    return {
-      data: {
-        data: shipmentItems.shipmentItems,
-        totalCount: shipmentItems.shipmentItemsCount,
-        currentPage: page,
-        pageSize: limit,
-        totalPages,
-        hasNext,
-        hasPrevious,
-      },
-      message: 'Shipment items fetched successfully',
-      status: HttpStatus.OK,
-    };
-  }
-  @Post(':id/add-client-and-shipment-item')
-  async addClientAndShipmentItem(
-    @Param('id') shipmentId: string,
-    @Body(new ValidationPipe()) createShipmenItem: CreateShipmentItemDto,
-  ) {
-    const shipmentItem = await this.shipmentService.addClientAndShipmentItem(
-      shipmentId,
-      createShipmenItem,
-    );
-    return {
-      data: shipmentItem,
-      message: 'Client and shipment item added successfully',
-      status: HttpStatus.OK,
-    };
-  }
   @Post()
   async createNewShipment(
     @Body(new ValidationPipe()) shipmentDto: CreateShipmentDto,
@@ -216,6 +164,66 @@ export class ShipmentController {
       status: HttpStatus.OK,
     };
   }
+  ///
+  ///
+  /// Shipment Item
+  @Get(':id/items')
+  async getShipmentItems(
+    @Param('id') shipmentId: string,
+    @Req() req: Request,
+    @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
+    @Query('search') search?: string,
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const page = pageQuery || 1;
+    const limit = limitQuery || 10;
+    const shipmentItems = await this.shipmentService.getShipmentItems(
+      shipmentId,
+      req.user.companyId,
+      page,
+      limit,
+      search,
+    );
+    const totalPages = Math.ceil(shipmentItems.shipmentItemsCount / limit);
+    const hasNext = page < totalPages;
+    const hasPrevious = page !== 1;
+    return {
+      data: {
+        data: shipmentItems.shipmentItems,
+        totalCount: shipmentItems.shipmentItemsCount,
+        currentPage: page,
+        pageSize: limit,
+        totalPages,
+        hasNext,
+        hasPrevious,
+      },
+      message: 'Shipment items fetched successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Post(':id/add-client-and-shipment-item')
+  async addClientAndShipmentItem(
+    @Param('id') shipmentId: string,
+    @Body(new ValidationPipe()) createShipmenItem: CreateShipmentItemDto,
+  ) {
+    const shipmentItem = await this.shipmentService.addClientAndShipmentItem(
+      shipmentId,
+      createShipmenItem,
+    );
+    return {
+      data: shipmentItem,
+      message: 'Client and shipment item added successfully',
+      status: HttpStatus.OK,
+    };
+  }
+
+  //TODO: Edit Shipment Item
+
+  //TODO: Delete Shipment Item
+
   // Movement
   @Put(':id/move-shipment-with-notification')
   async moveShipmentWithNotification(

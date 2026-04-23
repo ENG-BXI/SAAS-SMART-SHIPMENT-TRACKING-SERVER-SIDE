@@ -187,4 +187,21 @@ export class UserService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
+  async getAllDrivers(companyId: string) {
+    try {
+      const drivers = await this.prisma.user.findMany({
+        where: {
+          companyId: companyId,
+          isDriver: true,
+        },
+        select: {
+          id: true,
+          userName: true,
+        },
+      });
+      return drivers;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
 }
