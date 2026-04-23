@@ -10,6 +10,7 @@ import { UserModule } from './V1/user/user.module';
 import { WayModule } from './V1/way/way.module';
 import { NoteModule } from './V1/note/note.module';
 import { ShipmentModule } from './V1/shipment/shipment.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ShipmentModule } from './V1/shipment/shipment.module';
     WayModule,
     NoteModule,
     ShipmentModule,
+    PrismaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
