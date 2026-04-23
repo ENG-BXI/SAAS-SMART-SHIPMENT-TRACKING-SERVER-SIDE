@@ -38,16 +38,17 @@ async function bootstrap() {
       'JWT-auth', // This name must match the one used in @ApiBearerAuth()
     )
     .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-      displayRequestDuration: true,
-      filter: true,
-    },
-    customSiteTitle: 'SAAS Smart Shipment API Documentation',
-  });
+  if (process.env.NODE_ENV !== 'production') {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        filter: true,
+      },
+      customSiteTitle: 'SAAS Smart Shipment API Documentation',
+    });
+  }
   app.useGlobalInterceptors(new ErrorsInterceptor(), new ResponseInterceptor());
   await app.listen(process.env.PORT ?? 8000);
 }
