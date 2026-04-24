@@ -29,6 +29,7 @@ export class ClientService {
             select: {
               text: true,
               isPrimary: true,
+              contactType: true,
             },
           },
         },
@@ -54,6 +55,18 @@ export class ClientService {
             data: {
               name: client.name,
               companyId: companyId,
+            },
+            select: {
+              id: true,
+              name: true,
+              contactWays: {
+                select: {
+                  id: true,
+                  text: true,
+                  isPrimary: true,
+                  contactType: true,
+                },
+              },
             },
           });
           const contactWays = client.contactWays.map((contactWay) => ({
@@ -98,8 +111,7 @@ export class ClientService {
             },
           });
           const contactWays = client.contactWays.map((contactWay) => ({
-            text: contactWay.text,
-            isPrimary: contactWay.isPrimary,
+            ...contactWay,
             clientId: updatedClient.id,
           }));
           const contactWay = await tx.contactWay.createMany({
