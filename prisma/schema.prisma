@@ -66,11 +66,17 @@ model client {
 }
 
 model contactWay {
-  id        String  @id @default(uuid())
-  text      String  @unique
-  isPrimary Boolean @default(false)
-  clientId  String
-  client    client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id          String      @id @default(uuid())
+  text        String      @unique
+  isPrimary   Boolean     @default(false)
+  contactType contactType @default(phoneNumber)
+  clientId    String
+  client      client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+enum contactType {
+  phoneNumber
+  email
 }
 
 model user {
