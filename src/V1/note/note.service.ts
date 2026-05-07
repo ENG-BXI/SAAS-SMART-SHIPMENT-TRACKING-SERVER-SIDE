@@ -14,7 +14,6 @@ export class NoteService {
             search
               ? {
                   text: { contains: search, mode: 'insensitive' },
-                  createdAt: { gte: search },
                 }
               : {},
           ],
@@ -34,7 +33,6 @@ export class NoteService {
             search
               ? {
                   text: { contains: search, mode: 'insensitive' },
-                  createdAt: { gte: search },
                 }
               : {},
           ],
