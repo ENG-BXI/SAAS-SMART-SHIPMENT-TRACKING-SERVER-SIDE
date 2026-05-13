@@ -19,7 +19,7 @@ import type { Request } from 'express';
 export class StatisticsController {
   constructor(private readonly statisticsService: StatisticsService) {}
 
-  @Get('manager-statistics/:companyId')
+  @Get('manager-statistics')
   @UseGuards(AuthGuard)
   async getManagerStatistics(@Req() req: Request) {
     if (!req.user) {
