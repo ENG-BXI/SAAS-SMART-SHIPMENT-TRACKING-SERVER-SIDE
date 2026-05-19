@@ -37,6 +37,11 @@ export class StatisticsController {
 
   @Get('admin-statistics')
   async getAdminStatistics() {
-    return await this.statisticsService.getAdminStatistics();
+    const adminStatistics = await this.statisticsService.getAdminStatistics();
+    return {
+      data: adminStatistics,
+      message: 'Admin statistics fetched successfully',
+      status: HttpStatus.OK,
+    };
   }
 }

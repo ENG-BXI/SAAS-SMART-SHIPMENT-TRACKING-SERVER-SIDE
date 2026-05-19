@@ -38,11 +38,28 @@ export class CompanyService {
           location: true,
           createdAt: true,
           updatedAt: true,
+          users: {
+            take: 1,
+            orderBy: {
+              createAt: 'desc',
+            },
+            select: {
+              email: true,
+            },
+            where: {
+              isManager: true,
+            },
+          },
+          _count: {
+            select: {
+              clients: true,
+            }
+          }
         },
       });
       // TODO Temp Solution
       const newCompanies = companies.map((company) => {
-        return { ...company, subscriptionStatus: 'active', numberOfClient: 0 };
+        return { ...company, subscriptionStatus: 'active' };
       });
       const companiesNumber = await this.prisma.company.count();
       return { companies: newCompanies, companiesNumber };
@@ -131,6 +148,20 @@ export class CompanyService {
     try {
       const existingCompany = await this.prisma.company.findUnique({
         where: { id },
+        include: {
+          users: {
+            where: {
+              isManager: true,
+            },
+            select: {
+              id: true,
+            },
+            orderBy: {
+              createAt: 'desc',
+            },
+            take: 1,
+          },
+        },
       });
       if (!existingCompany) {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
@@ -171,7 +202,7 @@ export class CompanyService {
           },
         });
         const user = await tx.user.update({
-          where: { id: existingCompany.id },
+          where: { id: existingCompany.users[0].id },
           data: {
             email: updateCompanyDto.companyEmail,
             password: hashedPassword,
