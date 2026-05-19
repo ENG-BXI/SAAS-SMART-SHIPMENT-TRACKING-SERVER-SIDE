@@ -3,6 +3,7 @@ import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateShipmentItemDto } from './dto/create-shipment-item.dto';
+import { UpdateShipmentItemDto } from './dto/update-shipment-item.dto';
 
 @Injectable()
 export class ShipmentService {
@@ -25,8 +26,6 @@ export class ShipmentService {
                     {
                       shipmentNumber: { contains: search, mode: 'insensitive' },
                     },
-                    { launchDate: { gte: search } },
-                    { launchDate: { lte: search } },
                     {
                       way: { name: { contains: search, mode: 'insensitive' } },
                     },
@@ -53,21 +52,23 @@ export class ShipmentService {
           id: true,
           shipmentNumber: true,
           launchDate: true,
+          isCompleted: true,
+          isPaused: true,
           way: {
             select: {
-              id:true,
+              id: true,
               name: true,
             },
           },
           currentPoint: {
             select: {
-              id:true,
+              id: true,
               name: true,
             },
           },
           driver: {
             select: {
-              id:true,
+              id: true,
               userName: true,
             },
           },
@@ -84,8 +85,6 @@ export class ShipmentService {
                     {
                       shipmentNumber: { contains: search, mode: 'insensitive' },
                     },
-                    { launchDate: { gte: search } },
-                    { launchDate: { lte: search } },
                     {
                       way: { name: { contains: search, mode: 'insensitive' } },
                     },
@@ -130,8 +129,6 @@ export class ShipmentService {
                     {
                       shipmentNumber: { contains: search, mode: 'insensitive' },
                     },
-                    { launchDate: { gte: search } },
-                    { launchDate: { lte: search } },
                     {
                       way: { name: { contains: search, mode: 'insensitive' } },
                     },
@@ -158,21 +155,22 @@ export class ShipmentService {
           id: true,
           shipmentNumber: true,
           launchDate: true,
+          endDate: true,
           way: {
             select: {
-              id:true,
+              id: true,
               name: true,
             },
           },
           currentPoint: {
             select: {
-              id:true,
+              id: true,
               name: true,
             },
           },
           driver: {
             select: {
-              id:true,
+              id: true,
               userName: true,
             },
           },
@@ -189,8 +187,6 @@ export class ShipmentService {
                     {
                       shipmentNumber: { contains: search, mode: 'insensitive' },
                     },
-                    { launchDate: { gte: search } },
-                    { launchDate: { lte: search } },
                     {
                       way: { name: { contains: search, mode: 'insensitive' } },
                     },
@@ -227,6 +223,8 @@ export class ShipmentService {
               id: true,
               shipmentNumber: true,
               launchDate: true,
+              isCompleted: true,
+              isPaused: true,
               driver: {
                 select: {
                   userName: true,
@@ -306,6 +304,7 @@ export class ShipmentService {
               id: true,
               client: {
                 select: {
+                  id: true,
                   name: true,
                 },
               },
@@ -314,7 +313,44 @@ export class ShipmentService {
               isBreakable: true,
             },
           });
-          const shipmentItem = await tx.shipmentItem.findMany({
+          // const shipmentItems = await tx.client.findMany({
+          //   where: {
+          //     companyId: companyId,
+          //     shipmentItems: {
+          //       some: {
+          //         shipmentId: shipmentId,
+          //       },
+          //     },
+          //     ...(search
+          //       ? {
+          //           OR: [
+          //             { name: { contains: search, mode: 'insensitive' } },
+          //             {
+          //               shipmentItems: {
+          //                 some: {
+          //                   name: { contains: search, mode: 'insensitive' },
+          //                 },
+          //               },
+          //             },
+          //           ],
+          //         }
+          //       : {}),
+          //   },
+          //   skip: (page - 1) * limit,
+          //   take: limit,
+          //   select: {
+          //     id: true,
+          //     name: true,
+          //     shipmentItems: {
+          //       select: {
+          //         name: true,
+          //         quantity: true,
+          //         isBreakable: true,
+          //       },
+          //     },
+          //   },
+          // });
+          const shipmentItemsCount = await this.prisma.shipmentItem.count({
             where: {
               shipmentId: shipmentId,
               shipment: {
@@ -334,12 +370,14 @@ export class ShipmentService {
                 : {}),
             },
           });
-          const shipmentItemsCount = shipmentItem.reduce((acc, item) => {
-            return acc + item.quantity;
-          }, 0);
+
           return { shipmentItems, shipmentItemsCount };
         });
-      return { shipmentItems, shipmentItemsCount };
+
+      return {
+        shipmentItems,
+        shipmentItemsCount,
+      };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
@@ -373,6 +411,68 @@ export class ShipmentService {
         });
         const shipmentItem = await tx.shipmentItem.createMany({
           data,
+        });
+        return shipmentItem;
+      });
+      return shipmentItem;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async updateShipmentItem(
+    shipmentItemId: string,
+    updateShipmenItem: UpdateShipmentItemDto,
+  ) {
+    try {
+      const shipmentItem = await this.prisma.$transaction(async (tx) => {
+        const existShipmentItem = await tx.shipmentItem.findUnique({
+          where: { id: shipmentItemId },
+        });
+        if (!existShipmentItem) {
+          throw new HttpException(
+            'Shipment item not found',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+        const existClient = await tx.client.findUnique({
+          where: { id: updateShipmenItem.clientId },
+        });
+        if (!existClient) {
+          throw new HttpException('Client not found', HttpStatus.NOT_FOUND);
+        }
+        const data = {
+          name: updateShipmenItem.items?.[0]?.name,
+          quantity: updateShipmenItem.items?.[0]?.quantity,
+          isBreakable: updateShipmenItem.items?.[0]?.isBreakable,
+        };
+        const shipmentItem = await tx.shipmentItem.update({
+          where: { id: shipmentItemId },
+          data: {
+            ...data,
+            client: { connect: { id: updateShipmenItem.clientId } },
+          },
+        });
+        return shipmentItem;
+      });
+      return shipmentItem;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async deleteShipmentItem(shipmentItemId: string) {
+    try {
+      const shipmentItem = await this.prisma.$transaction(async (tx) => {
+        const existShipmentItem = await tx.shipmentItem.findUnique({
+          where: { id: shipmentItemId },
+        });
+        if (!existShipmentItem) {
+          throw new HttpException(
+            'Shipment item not found',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+        const shipmentItem = await tx.shipmentItem.delete({
+          where: { id: shipmentItemId },
         });
         return shipmentItem;
       });
@@ -537,7 +637,12 @@ export class ShipmentService {
         // Update Shipment
         const shipment = await tx.shipment.update({
           where: { id: shipmenId, companyId: companyId },
-          data: { currentPointId: NextPoint.id, isCompleted: isComplete },
+          data: {
+            currentPointId: NextPoint.id,
+            isCompleted: isComplete,
+            endDate: isComplete ? new Date() : null,
+            isPaused: false,
+          },
         });
         // Add Notification
         return { shipment };
@@ -600,7 +705,12 @@ export class ShipmentService {
         // Update Shipment
         const shipment = await tx.shipment.update({
           where: { id: shipmenId, companyId: companyId },
-          data: { currentPointId: NextPoint.id, isCompleted: isComplete },
+          data: {
+            currentPointId: NextPoint.id,
+            isCompleted: isComplete,
+            endDate: isComplete ? new Date() : null,
+            isPaused: false,
+          },
         });
         return { shipment };
       });

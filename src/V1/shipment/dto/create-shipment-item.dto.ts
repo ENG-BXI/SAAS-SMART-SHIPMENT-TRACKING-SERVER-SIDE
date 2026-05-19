@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsBoolean, IsNumber, IsString, IsUUID, ValidateNested } from 'class-validator';
 
-class ShipmentItemDto {
+export class ShipmentItemDto {
   @IsString()
   name: string;
   @IsNumber()

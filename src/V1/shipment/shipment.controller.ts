@@ -21,6 +21,7 @@ import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CreateShipmentItemDto } from './dto/create-shipment-item.dto';
+import { UpdateShipmentItemDto } from './dto/update-shipment-item.dto';
 
 @Controller({ path: 'shipment', version: '1' })
 @UseGuards(AuthGuard)
@@ -219,11 +220,31 @@ export class ShipmentController {
       status: HttpStatus.OK,
     };
   }
-
-  //TODO: Edit Shipment Item
-
-  //TODO: Delete Shipment Item
-
+  @Put(':id/update-shipment-item')
+  async updateShipmentItem(
+    @Param('id') shipmentItemId: string,
+    @Body(new ValidationPipe()) updateShipmenItem: UpdateShipmentItemDto,
+  ) {
+    const shipmentItem = await this.shipmentService.updateShipmentItem(
+      shipmentItemId,
+      updateShipmenItem,
+    );
+    return {
+      data: shipmentItem,
+      message: 'Client and shipment item updated successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Delete(':id/delete-shipment-item')
+  async deleteShipmentItem(@Param('id') shipmentItemId: string) {
+    const shipmentItem =
+      await this.shipmentService.deleteShipmentItem(shipmentItemId);
+    return {
+      data: shipmentItem,
+      message: 'Client and shipment item deleted successfully',
+      status: HttpStatus.OK,
+    };
+  }
   // Movement
   @Put(':id/move-shipment-with-notification')
   async moveShipmentWithNotification(

@@ -11,6 +11,7 @@ import { WayModule } from './V1/way/way.module';
 import { NoteModule } from './V1/note/note.module';
 import { ShipmentModule } from './V1/shipment/shipment.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { StatisticsModule } from './V1/statistics/statistics.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PrismaModule } from './prisma/prisma.module';
     NoteModule,
     ShipmentModule,
     PrismaModule,
+    StatisticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
