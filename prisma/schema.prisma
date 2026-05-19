@@ -92,6 +92,8 @@ model user {
   company     company?   @relation(fields: [companyId], references: [id])
   shipments   shipment[]
   phoneNumber String?
+  createAt    DateTime   @default(now())
+  updateAt    DateTime   @updatedAt
 }
 
 model way {
