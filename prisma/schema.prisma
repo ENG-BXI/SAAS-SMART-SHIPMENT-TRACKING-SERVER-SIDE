@@ -43,6 +43,7 @@ model SubscriptionType {
   id           String         @id @default(uuid())
   type         String         @unique
   price        Float
+  durationByMonth     Int            @unique
   subscription subscription[]
 }
 
@@ -51,6 +52,7 @@ enum SubscriptionStatus {
   active
   inactive
   expired
+  change
 }
 
 model client {

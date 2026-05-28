@@ -68,4 +68,7 @@ export class CreateCompanyDto {
   })
   //   compare companyPassword with confirmPassword
   confirmPassword: string;
+
+  @IsString({ message: 'Subscription Type must be a string' })
+  subscriptionType: string;
 }

@@ -77,12 +77,18 @@ export class StatisticsService {
     const year = new Date().getFullYear();
     const [
       numberOfCompanies,
+      numberOfSubscriptionRequest,
       numberOfNotes,
       numberOfWillSubscriptionFinish,
       numberOfPausedCompanies,
       CompanyByMonth,
     ] = await Promise.all([
       this.prisma.company.count(),
+      this.prisma.company.count({
+        where: {
+          subscription: { status: 'pending' },
+        },
+      }),
       // TODO : numberOfVisited
       this.prisma.note.count(),
       this.prisma.company.count({
@@ -140,6 +146,7 @@ export class StatisticsService {
 
     return {
       numberOfCompanies,
+      numberOfSubscriptionRequest,
       numberOfNotes,
       numberOfWillSubscriptionFinish,
       numberOfPausedCompanies,
