@@ -16,6 +16,25 @@ export class AuthService {
       where: {
         email: loginDto.email,
       },
+      select: {
+        isAdmin: true,
+        isDriver: true,
+        isEmployee: true,
+        isManager: true,
+        password: true,
+        id: true,
+        email: true,
+        companyId: true,
+        company: {
+          select: {
+            subscription: {
+              select: {
+                status: true,
+              },
+            },
+          },
+        },
+      },
     });
     // Check if user exist
     if (!user) {
@@ -38,11 +57,13 @@ export class AuthService {
           : user.isDriver
             ? USER_ROLE.DRIVER
             : null;
+    const status = user.company?.subscription?.status;
     const payload = {
       id: user.id,
       email: user.email,
       companyId: user.companyId,
       role: role,
+      status,
     };
     return this.jwtService.sign(payload);
   }
