@@ -101,6 +101,81 @@ export class CompanyControllerV1 {
       status: HttpStatus.OK,
     };
   }
+  // Post Company
+  /**
+   * @Post
+   * @Body CreateCompanyDto
+   * @returns Company
+   */
+  @Post()
+  @ApiOperation({
+    summary: 'Create a new company',
+    description:
+      'Register a new company with necessary details (Name, Location, Email, Password).',
+  })
+  @ApiBody({ type: CreateCompanyDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Company created successfully.',
+    type: CompanyResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request. Validation failed or passwords do not match.',
+  })
+  // this is used From Dash on Admin
+  async createCompany(
+    @Body(new ValidationPipe()) createCompanyDto: CreateCompanyDto,
+  ) {
+    if (createCompanyDto.companyPassword !== createCompanyDto.confirmPassword) {
+      throw new HttpException('Password not match', HttpStatus.BAD_REQUEST);
+    }
+    const company = await this.companyService.createCompany(createCompanyDto);
+    return {
+      data: company,
+      message: 'Create Company successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Post('request-subscription')
+  // This is used From Landing page
+  async RequestSubscriptionCompany(
+    @Body(new ValidationPipe()) createCompanyDto: CreateCompanyDto,
+  ) {
+    if (createCompanyDto.companyPassword !== createCompanyDto.confirmPassword) {
+      throw new HttpException('Password not match', HttpStatus.BAD_REQUEST);
+    }
+    const company =
+      await this.companyService.RequestSubscriptionCompany(createCompanyDto);
+    return {
+      data: company,
+      message: 'Create Company successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  @Get('request-subscription')
+  async GetAllRequestSubscriptionCompanies(
+    @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
+    @Query('search') search?: string,
+    @Query('filter') filter?: string,
+  ) {
+    const page = pageQuery || 1;
+    const limit = limitQuery || 10;
+    const companies =
+      await this.companyService.getAllRequestSubscriptionCompanies({
+        page,
+        limit,
+        search: search || '',
+        filter: filter || '',
+      });
+
+    return {
+      data: companies,
+      status: HttpStatus.OK,
+      message: 'Get All Request Company Successful',
+    };
+  }
   // Get Company by ID
   /**
    * @Get /:id
@@ -132,42 +207,6 @@ export class CompanyControllerV1 {
     return {
       data: company,
       message: 'Get Company successfully',
-      status: HttpStatus.OK,
-    };
-  }
-
-  // Post Company
-  /**
-   * @Post
-   * @Body CreateCompanyDto
-   * @returns Company
-   */
-  @Post()
-  @ApiOperation({
-    summary: 'Create a new company',
-    description:
-      'Register a new company with necessary details (Name, Location, Email, Password).',
-  })
-  @ApiBody({ type: CreateCompanyDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Company created successfully.',
-    type: CompanyResponseDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad Request. Validation failed or passwords do not match.',
-  })
-  async createCompany(
-    @Body(new ValidationPipe()) createCompanyDto: CreateCompanyDto,
-  ) {
-    if (createCompanyDto.companyPassword !== createCompanyDto.confirmPassword) {
-      throw new HttpException('Password not match', HttpStatus.BAD_REQUEST);
-    }
-    const company = await this.companyService.createCompany(createCompanyDto);
-    return {
-      data: company,
-      message: 'Create Company successfully',
       status: HttpStatus.OK,
     };
   }

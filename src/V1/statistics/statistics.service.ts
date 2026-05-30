@@ -86,7 +86,9 @@ export class StatisticsService {
       this.prisma.company.count(),
       this.prisma.company.count({
         where: {
-          subscription: { status: 'pending' },
+          subscription: {
+            OR: [{ status: 'pending' }, { status: 'change' }],
+          },
         },
       }),
       // TODO : numberOfVisited

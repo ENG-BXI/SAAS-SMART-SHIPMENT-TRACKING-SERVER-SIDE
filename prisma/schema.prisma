@@ -29,22 +29,25 @@ model company {
 }
 
 model subscription {
-  id        String             @id @default(uuid())
-  typeId    String
-  type      SubscriptionType   @relation(fields: [typeId], references: [id])
-  status    SubscriptionStatus @default(pending)
-  startDate DateTime
-  endDate   DateTime
-  company   company            @relation(fields: [companyId], references: [id])
-  companyId String             @unique
+  id                 String             @id @default(uuid())
+  typeId             String
+  type               SubscriptionType   @relation(fields: [typeId], references: [id], name: "current Subscription")
+  newTypeId          String?
+  newType            SubscriptionType?   @relation(fields: [newTypeId], references: [id], name: "when Company Change Subscription")
+  status             SubscriptionStatus @default(pending)
+  startDate          DateTime?
+  endDate            DateTime?
+  company            company            @relation(fields: [companyId], references: [id])
+  companyId          String             @unique
 }
 
 model SubscriptionType {
-  id           String         @id @default(uuid())
-  type         String         @unique
-  price        Float
-  durationByMonth     Int            @unique
-  subscription subscription[]
+  id              String         @id @default(uuid())
+  type            String         @unique
+  price           Float
+  durationByMonth Int            @unique
+  subscription    subscription[] @relation(name: "current Subscription")
+  newSubscription subscription[] @relation(name: "when Company Change Subscription")
 }
 
 enum SubscriptionStatus {

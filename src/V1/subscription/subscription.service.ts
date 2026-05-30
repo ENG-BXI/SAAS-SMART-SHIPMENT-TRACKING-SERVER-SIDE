@@ -74,6 +74,139 @@ export class SubscriptionService {
       );
     }
   }
+  // Add and Accept Company when it request subscription
+  async addSubscription(
+    companyId: string,
+    SubscriptionDto: CreateSubscriptionDto,
+  ) {
+    const subscriptionType = await this.prisma.subscriptionType.findUnique({
+      where: {
+        id: SubscriptionDto.type,
+      },
+    });
+    // Check the type is invalid?
+    if (!subscriptionType) {
+      throw new HttpException(
+        'Subscription type not found',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const company = await this.prisma.company.findUnique({
+      where: {
+        id: companyId,
+      },
+      select: {
+        subscription: {
+          select: {
+            startDate: true,
+            endDate: true,
+            newTypeId: true,
+          },
+        },
+      },
+    });
+    // check the company in exist
+    if (!company) {
+      throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
+    }
+    const startDate = new Date();
+    const startMonth = startDate.getMonth();
+    const endDate = new Date();
+    endDate.setMonth(startMonth + subscriptionType.durationByMonth);
+
+    const { newSubscription } = await this.prisma.$transaction(async (tx) => {
+      const newSubscription = await tx.subscription.update({
+        where: {
+          companyId,
+        },
+        data: {
+          type: {
+            connect: {
+              id: SubscriptionDto.type,
+            },
+          },
+          startDate,
+          endDate,
+          status: SubscriptionStatus.active,
+        },
+      });
+      if (company.subscription?.newTypeId) {
+        await tx.company.update({
+          where: { id: companyId },
+          data: {
+            subscription: {
+              update: {
+                newType: { disconnect: true },
+                newTypeId: undefined,
+              },
+            },
+          },
+        });
+      }
+      return { newSubscription };
+    });
+
+    return newSubscription;
+  }
+  async getSubscription(companyId: string) {
+    const existCompany = await this.prisma.company.findUnique({
+      where: { id: companyId },
+    });
+    if (!existCompany) {
+      throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
+    }
+    const subscription = await this.prisma.subscription.findUnique({
+      where: {
+        companyId,
+      },
+      select: {
+        startDate: true,
+        endDate: true,
+        status: true,
+        type: {
+          select: {
+            type: true,
+            price: true,
+            durationByMonth: true,
+          },
+        },
+      },
+    });
+    return subscription;
+  }
+  async editCompanySubscription(companyId: string, subscriptionTypeId: string) {
+    const existCompany = await this.prisma.company.findUnique({
+      where: {
+        id: companyId,
+      },
+    });
+    if (!existCompany) {
+      throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
+    }
+    const existSubscription = await this.prisma.subscriptionType.findUnique({
+      where: {
+        id: subscriptionTypeId,
+      },
+    });
+    if (!existSubscription) {
+      throw new HttpException('Subscription not found', HttpStatus.BAD_REQUEST);
+    }
+
+    const editedSubscription = await this.prisma.subscription.update({
+      where: {
+        companyId,
+      },
+      data: {
+        status: SubscriptionStatus.change,
+        newType: {
+          connect: { id: subscriptionTypeId },
+        },
+      },
+    });
+
+    return editedSubscription;
+  }
+
   async getSubscriptionType() {
     const subscriptionType = await this.prisma.subscriptionType.findMany({
       select: {
@@ -212,144 +345,5 @@ export class SubscriptionService {
       if (error instanceof Error)
         throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
-  }
-  async addSubscription(
-    companyId: string,
-    SubscriptionDto: CreateSubscriptionDto,
-  ) {
-    const subscriptionType = await this.prisma.subscriptionType.findUnique({
-      where: {
-        id: SubscriptionDto.type,
-      },
-    });
-    // Check the type is invalid?
-    if (!subscriptionType) {
-      throw new HttpException(
-        'Subscription type not found',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    const company = await this.prisma.company.findUnique({
-      where: {
-        id: companyId,
-      },
-      select: {
-        subscription: {
-          select: {
-            startDate: true,
-            endDate: true,
-          },
-        },
-      },
-    });
-    // check the company in exist
-    if (!company) {
-      throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
-    }
-    let startDate = new Date();
-    let endDate = new Date();
-    // if Company has subscription set the new start subscription date to the company has
-    // and set the end date to the company has + duration
-    if (company.subscription) {
-      startDate = company.subscription.startDate;
-      let date = company.subscription.endDate.getDate();
-      let month;
-      let year;
-      if (subscriptionType.type == 'monthly') {
-        month = company.subscription.endDate.getMonth() + 1;
-        year = company.subscription.endDate.getFullYear();
-      } else {
-        month = company.subscription.endDate.getMonth();
-        year = company.subscription.endDate.getFullYear() + 1;
-      }
-      endDate.setMonth(month);
-      endDate.setFullYear(year);
-      // to save what day is has endDate company
-      endDate.setDate(date);
-    } else {
-      // if Company has no subscription set the new start subscription date to the current date
-      if (subscriptionType.type == 'monthly') {
-        endDate.setMonth(endDate.getMonth() + 1);
-      } else {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      }
-    }
-    const data = {
-      companyId,
-      startDate: startDate,
-      endDate: endDate,
-      typeId: SubscriptionDto.type,
-      status: SubscriptionStatus.pending,
-    };
-    let newSubscription;
-    if (!company.subscription) {
-      newSubscription = await this.prisma.subscription.create({
-        data,
-      });
-    } else {
-      newSubscription = await this.prisma.subscription.update({
-        where: {
-          companyId,
-        },
-        data,
-      });
-    }
-    return newSubscription;
-  }
-  async getSubscription(companyId: string) {
-    const existCompany = await this.prisma.company.findUnique({
-      where: { id: companyId },
-    });
-    if (!existCompany) {
-      throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
-    }
-    const subscription = await this.prisma.subscription.findUnique({
-      where: {
-        companyId,
-      },
-      select: {
-        startDate: true,
-        endDate: true,
-        status: true,
-        type: {
-          select: {
-            type: true,
-            price: true,
-            durationByMonth: true,
-          },
-        },
-      },
-    });
-    return subscription;
-  }
-  async editCompanySubscription(companyId: string, subscriptionTypeId: string) {
-    const existCompany = await this.prisma.company.findUnique({
-      where: {
-        id: companyId,
-      },
-    });
-    if (!existCompany) {
-      throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
-    };
-    const existSubscription = await this.prisma.subscriptionType.findUnique({
-      where: {
-        id: subscriptionTypeId,
-      },
-    });
-    if (!existSubscription) {
-      throw new HttpException('Subscription not found', HttpStatus.BAD_REQUEST);
-    };
-
-    const editedSubscription = await this.prisma.subscription.update({
-      where: {
-        companyId,
-      },
-      data: {
-        status:'change'
-      },
-    });
-
-    return editedSubscription;
-
   }
 }

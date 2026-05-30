@@ -3,6 +3,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import * as bcrypt from 'bcrypt';
+import { SubscriptionStatus } from 'generated/prisma/enums';
 @Injectable()
 export class CompanyService {
   constructor(private readonly prisma: PrismaService) {}
@@ -63,12 +64,8 @@ export class CompanyService {
           },
         },
       });
-      // TODO Temp Solution
-      const newCompanies = companies.map((company) => {
-        return company;
-      });
       const companiesNumber = await this.prisma.company.count();
-      return { companies: newCompanies, companiesNumber };
+      return { companies, companiesNumber };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
@@ -80,6 +77,196 @@ export class CompanyService {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
       return company;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async RequestSubscriptionCompany(createCompanyDto: CreateCompanyDto) {
+    try {
+      const existingCompany = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: createCompanyDto.companyEmail },
+            {
+              company: {
+                name: createCompanyDto.name,
+              },
+            },
+          ],
+        },
+      });
+      if (existingCompany) {
+        const message =
+          existingCompany.email === createCompanyDto.companyEmail
+            ? 'Company with this email already exists'
+            : 'Company with this name already exists';
+        throw new HttpException(message, HttpStatus.BAD_REQUEST);
+      }
+      const hashedPassword = await bcrypt.hash(
+        createCompanyDto.companyPassword,
+        10,
+      );
+      const subscriptionType = await this.prisma.subscriptionType.findUnique({
+        where: {
+          id: createCompanyDto.subscriptionType,
+        },
+        select: {
+          id: true,
+        },
+      });
+      if (!subscriptionType)
+        throw new HttpException(
+          'Cannot Find Subscription Type',
+          HttpStatus.BAD_REQUEST,
+        );
+      const { company, user, subscription } = await this.prisma.$transaction(
+        async (tx) => {
+          const company = await tx.company.create({
+            data: {
+              name: createCompanyDto.name,
+              location: createCompanyDto.location,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+          // Manager Of Company
+          const user = await tx.user.create({
+            data: {
+              email: createCompanyDto.companyEmail,
+              password: hashedPassword,
+              userName: `Manager of ${createCompanyDto.name}`,
+              isAdmin: false,
+              isManager: true,
+              isEmployee: false,
+              isDriver: false,
+              companyId: company.id,
+            },
+            select: {
+              id: true,
+              email: true,
+              userName: true,
+              isAdmin: true,
+              isManager: true,
+              isEmployee: true,
+              isDriver: true,
+              companyId: true,
+            },
+          });
+          const subscription = await tx.subscription.create({
+            data: {
+              status: SubscriptionStatus.pending,
+              companyId: company.id,
+              typeId: subscriptionType.id,
+            },
+          });
+          return { company, user, subscription };
+        },
+      );
+
+      return { company, user, subscription };
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async getAllRequestSubscriptionCompanies({
+    page,
+    limit,
+    search,
+    filter,
+  }: {
+    page: number;
+    limit: number;
+    search: string;
+    filter: string;
+  }) {
+    try {
+      const [companies, pendingCompanyCount, changeCompanyCount] =
+        await Promise.all([
+          await this.prisma.company.findMany({
+            where: {
+              AND: [
+                {
+                  OR: [
+                    { name: { contains: search, mode: 'insensitive' } },
+                    { location: { contains: search, mode: 'insensitive' } },
+                  ],
+                },
+                // Add Filter Subreption
+                {
+                  subscription: {
+                    OR: [
+                      {
+                        status: SubscriptionStatus.pending,
+                      },
+                      { status: SubscriptionStatus.change },
+                    ],
+                  },
+                },
+              ],
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+            select: {
+              id: true,
+              name: true,
+              location: true,
+              createdAt: true,
+              updatedAt: true,
+              users: {
+                take: 1,
+                orderBy: {
+                  createAt: 'desc',
+                },
+                select: {
+                  email: true,
+                },
+                where: {
+                  isManager: true,
+                },
+              },
+              subscription: {
+                select: {
+                  startDate: true,
+                  endDate: true,
+                  status: true,
+                  newTypeId:true,
+                  type: {
+                    select: {
+                      id: true,
+                      type: true,
+                      price: true,
+                      durationByMonth: true,
+                    },
+                  },
+                },
+              },
+            },
+          }),
+          await this.prisma.company.count({
+            where: {
+              subscription: { status: SubscriptionStatus.pending },
+            },
+          }),
+          await this.prisma.company.count({
+            where: {
+              subscription: { status: SubscriptionStatus.change },
+            },
+          }),
+        ]);
+
+      // const newData = companies.map((item) => {
+      //   return {
+      //     ...item,
+      //     subscription: {
+      //       ...item.subscription,
+      //       type: {
+      //         ...item.subscription?.type,
+      //         id: item.subscription?.newType?.id || item.subscription?.type.id,
+      //       },
+      //     },
+      //   };
+      // });
+      return { companies, pendingCompanyCount, changeCompanyCount };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
@@ -162,8 +349,7 @@ export class CompanyService {
 
           const subscription = await tx.subscription.create({
             data: {
-              id: createCompanyDto.subscriptionType,
-              status: 'active',
+              status: SubscriptionStatus.active,
               startDate,
               endDate,
               companyId: company.id,
@@ -237,7 +423,7 @@ export class CompanyService {
         },
       });
 
-      if(!subscriptionType)
+      if (!subscriptionType)
         throw new HttpException(
           'Cannot Find Subscription Type',
           HttpStatus.BAD_REQUEST,
@@ -287,20 +473,19 @@ export class CompanyService {
             const endDate = new Date();
             endDate.setMonth(startMonth + subscriptionType.durationByMonth);
 
-          
-              const subscription = await tx.subscription.update({
-                where: {
-                  id: existingCompany.subscription?.id,
-                },
-                data: {
-                  status: 'active',
-                  startDate,
-                  endDate,
-                  companyId: company.id,
-                  typeId: updateCompanyDto.subscriptionType,
-                },
-              });
-              return { company, user, subscription };
+            const subscription = await tx.subscription.update({
+              where: {
+                id: existingCompany.subscription?.id,
+              },
+              data: {
+                status: 'active',
+                startDate,
+                endDate,
+                companyId: company.id,
+                typeId: updateCompanyDto.subscriptionType,
+              },
+            });
+            return { company, user, subscription };
           }
           return { company, user };
         },
