@@ -72,11 +72,191 @@ export class CompanyService {
   }
   async getCompanyById(id: string) {
     try {
-      const company = await this.prisma.company.findUnique({ where: { id } });
+      const company = await this.prisma.company.findUnique({
+        where: { id },
+        select: {
+          name: true,
+          location: true,
+          _count: {
+            select: {
+              clients: true,
+            },
+          },
+          subscription: {
+            select: {
+              startDate: true,
+              endDate: true,
+              status: true,
+              type: {
+                select: {
+                  type: true,
+                  durationByMonth: true,
+                },
+              },
+            },
+          },
+          users: {
+            take: 1,
+            orderBy: {
+              createAt: 'desc',
+            },
+            select: {
+              email: true,
+            },
+            where: {
+              isManager: true,
+            },
+          },
+        },
+      });
       if (!company) {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
       return company;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async pauseCompanySubscription(id: string) {
+    try {
+      const company = await this.prisma.company.findUnique({
+        where: { id },
+        select: {
+          name: true,
+          location: true,
+          _count: {
+            select: {
+              clients: true,
+            },
+          },
+          subscription: {
+            select: {
+              startDate: true,
+              endDate: true,
+              status: true,
+              type: {
+                select: {
+                  type: true,
+                  durationByMonth: true,
+                },
+              },
+            },
+          },
+          users: {
+            take: 1,
+            orderBy: {
+              createAt: 'desc',
+            },
+            select: {
+              email: true,
+            },
+            where: {
+              isManager: true,
+            },
+          },
+        },
+      });
+      if (!company) {
+        throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
+      }
+      const isSubscriptionStatusRunning =
+        await this.prisma.subscription.findFirst({
+          where: {
+            companyId: id,
+            NOT: {
+              OR: [
+                { status: SubscriptionStatus.inactive },
+                { status: SubscriptionStatus.pending },
+                { status: SubscriptionStatus.expired },
+              ],
+            },
+          },
+          select: {
+            status: true,
+          },
+        });
+      if (!isSubscriptionStatusRunning) {
+        throw new HttpException(
+          'This Company Subscription Not Active For disActive',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const disActiveCompany = await this.prisma.subscription.update({
+        where: { companyId: id },
+        data: {
+          status: SubscriptionStatus.inactive,
+        },
+      });
+      return disActiveCompany;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
+  async activeCompanySubscription(id: string) {
+    try {
+      const company = await this.prisma.company.findUnique({
+        where: { id },
+        select: {
+          name: true,
+          location: true,
+          _count: {
+            select: {
+              clients: true,
+            },
+          },
+          subscription: {
+            select: {
+              startDate: true,
+              endDate: true,
+              status: true,
+              type: {
+                select: {
+                  type: true,
+                  durationByMonth: true,
+                },
+              },
+            },
+          },
+          users: {
+            take: 1,
+            orderBy: {
+              createAt: 'desc',
+            },
+            select: {
+              email: true,
+            },
+            where: {
+              isManager: true,
+            },
+          },
+        },
+      });
+      if (!company) {
+        throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
+      }
+      const isSubscriptionStatusInActive =
+        await this.prisma.subscription.findFirst({
+          where: {
+            companyId: id,
+            status: SubscriptionStatus.inactive,
+          },
+          select: {
+            status: true,
+          },
+        });
+      if (!isSubscriptionStatusInActive) {
+        throw new HttpException(
+          'This Company Subscription Not InActive For Activation Subscription',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const ActiveCompany = await this.prisma.subscription.update({
+        where: { companyId: id },
+        data: {
+          status: SubscriptionStatus.active,
+        },
+      });
+      return ActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
@@ -229,7 +409,7 @@ export class CompanyService {
                   startDate: true,
                   endDate: true,
                   status: true,
-                  newTypeId:true,
+                  newTypeId: true,
                   type: {
                     select: {
                       id: true,

@@ -37,7 +37,7 @@ model subscription {
   status             SubscriptionStatus @default(pending)
   startDate          DateTime?
   endDate            DateTime?
-  company            company            @relation(fields: [companyId], references: [id])
+  company            company            @relation(fields: [companyId], references: [id],onDelete: Cascade)
   companyId          String             @unique
 }
 
@@ -62,7 +62,7 @@ model client {
   id            String         @id @default(uuid())
   name          String
   companyId     String
-  company       company        @relation(fields: [companyId], references: [id])
+  company       company        @relation(fields: [companyId], references: [id],onDelete: Cascade)
   contactWays   contactWay[]
   shipments     shipment[]
   shipmentItems shipmentItem[]
@@ -94,7 +94,7 @@ model user {
   isEmployee  Boolean    @default(true)
   isDriver    Boolean    @default(false)
   companyId   String?
-  company     company?   @relation(fields: [companyId], references: [id])
+  company     company?   @relation(fields: [companyId], references: [id],onDelete: Cascade)
   shipments   shipment[]
   phoneNumber String?
   createAt    DateTime   @default(now())
@@ -105,7 +105,7 @@ model way {
   id        String     @id @default(uuid())
   name      String
   companyId String
-  company   company    @relation(fields: [companyId], references: [id])
+  company   company    @relation(fields: [companyId], references: [id],onDelete: Cascade)
   points    point[]
   shipments shipment[]
 
@@ -130,7 +130,7 @@ model note {
   text      String
   createdAt DateTime @default(now())
   companyId String
-  company   company  @relation(fields: [companyId], references: [id])
+  company   company  @relation(fields: [companyId], references: [id],onDelete: Cascade)
 }
 
 enum NoteType {
@@ -156,7 +156,7 @@ model shipment {
   client         client[]
   shipmentItems  shipmentItem[]
   companyId      String
-  company        company        @relation(fields: [companyId], references: [id])
+  company        company        @relation(fields: [companyId], references: [id],onDelete: Cascade)
   isPaused       Boolean        @default(false)
   isCompleted    Boolean        @default(false)
 
