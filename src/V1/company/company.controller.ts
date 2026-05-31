@@ -210,6 +210,24 @@ export class CompanyControllerV1 {
       status: HttpStatus.OK,
     };
   }
+  @Patch('pause-subscription/:id')
+  async pauseCompanySubscription(@Param('id', ParseUUIDPipe) id: string) {
+    const disActive = await this.companyService.pauseCompanySubscription(id);
+    return {
+      data: disActive,
+      message: 'Pause Company Subscription Successful',
+      status: HttpStatus.OK,
+    };
+  }
+  @Patch('active-subscription/:id')
+  async activeCompanySubscription(@Param('id', ParseUUIDPipe) id: string) {
+    const disActive = await this.companyService.activeCompanySubscription(id);
+    return {
+      data: disActive,
+      message: 'Active Company Subscription Successful',
+      status: HttpStatus.OK,
+    };
+  }
   // Patch Company
   /**
    * @Patch /:id
