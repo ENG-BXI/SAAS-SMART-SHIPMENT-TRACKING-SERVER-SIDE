@@ -44,4 +44,9 @@ export class StatisticsController {
       status: HttpStatus.OK,
     };
   }
+  @Post('add-visit')
+  async addVisit() {
+    const addedVisit = await this.statisticsService.addVisit();
+    return addedVisit
+  }
 }
