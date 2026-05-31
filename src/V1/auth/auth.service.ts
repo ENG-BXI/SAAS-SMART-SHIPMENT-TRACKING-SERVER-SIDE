@@ -30,6 +30,7 @@ export class AuthService {
             subscription: {
               select: {
                 status: true,
+                endDate:true
               },
             },
           },
@@ -58,12 +59,14 @@ export class AuthService {
             ? USER_ROLE.DRIVER
             : null;
     const status = user.company?.subscription?.status;
+    const endSubscriptionDate = user.company?.subscription?.endDate
     const payload = {
       id: user.id,
       email: user.email,
       companyId: user.companyId,
       role: role,
       status,
+      endSubscriptionDate
     };
     return this.jwtService.sign(payload);
   }
