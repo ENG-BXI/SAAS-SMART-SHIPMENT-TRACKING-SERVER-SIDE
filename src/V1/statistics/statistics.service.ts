@@ -78,6 +78,7 @@ export class StatisticsService {
     const [
       numberOfCompanies,
       numberOfSubscriptionRequest,
+      numberOfVisited,
       numberOfNotes,
       numberOfWillSubscriptionFinish,
       numberOfPausedCompanies,
@@ -91,7 +92,10 @@ export class StatisticsService {
           },
         },
       }),
-      // TODO : numberOfVisited
+      this.prisma.system.findFirst({
+        where: { name: 'NUMBER_OF_VISITOR' },
+        select: { value: true },
+      }),
       this.prisma.note.count(),
       this.prisma.company.count({
         where: {
@@ -145,14 +149,40 @@ export class StatisticsService {
       const monthIndex = new Date(company.createdAt).getMonth();
       returnCompaniesByMonth[monthIndex].count++;
     });
-
     return {
       numberOfCompanies,
       numberOfSubscriptionRequest,
+      numberOfVisited: numberOfVisited?.value || 0,
       numberOfNotes,
       numberOfWillSubscriptionFinish,
       numberOfPausedCompanies,
       numberOfCompanyByMonth: returnCompaniesByMonth,
     };
+  }
+
+  async addVisit() {
+    try {
+      const isNumberOfVisitExist = await this.prisma.system.findFirst();
+      if (
+        isNumberOfVisitExist &&
+        isNumberOfVisitExist.name == 'NUMBER_OF_VISITOR'
+      ) {
+        const addedVisit = await this.prisma.system.update({
+          where: { name: 'NUMBER_OF_VISITOR' },
+          data: {
+            value: (Number(isNumberOfVisitExist.value) + 1).toString(),
+          },
+        });
+        return addedVisit;
+      } else {
+        const addedVisit = await this.prisma.system.create({
+          data: {
+            name: 'NUMBER_OF_VISITOR',
+            value: '1',
+          },
+        });
+        return addedVisit;
+      }
+    } catch (error) {}
   }
 }

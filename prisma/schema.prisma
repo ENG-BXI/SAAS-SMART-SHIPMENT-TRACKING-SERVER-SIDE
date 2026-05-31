@@ -14,6 +14,16 @@ datasource db {
   provider = "postgresql"
 }
 
+model system {
+  id    String     @id @unique @default(uuid())
+  name  systemType @unique
+  value String
+}
+
+enum systemType {
+  NUMBER_OF_VISITOR
+}
+
 model company {
   id           String        @id @unique @default(uuid())
   name         String        @unique
@@ -29,16 +39,16 @@ model company {
 }
 
 model subscription {
-  id                 String             @id @default(uuid())
-  typeId             String
-  type               SubscriptionType   @relation(fields: [typeId], references: [id], name: "current Subscription")
-  newTypeId          String?
-  newType            SubscriptionType?   @relation(fields: [newTypeId], references: [id], name: "when Company Change Subscription")
-  status             SubscriptionStatus @default(pending)
-  startDate          DateTime?
-  endDate            DateTime?
-  company            company            @relation(fields: [companyId], references: [id],onDelete: Cascade)
-  companyId          String             @unique
+  id        String             @id @default(uuid())
+  typeId    String
+  type      SubscriptionType   @relation(fields: [typeId], references: [id], name: "current Subscription")
+  newTypeId String?
+  newType   SubscriptionType?  @relation(fields: [newTypeId], references: [id], name: "when Company Change Subscription")
+  status    SubscriptionStatus @default(pending)
+  startDate DateTime?
+  endDate   DateTime?
+  company   company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String             @unique
 }
 
 model SubscriptionType {
@@ -62,7 +72,7 @@ model client {
   id            String         @id @default(uuid())
   name          String
   companyId     String
-  company       company        @relation(fields: [companyId], references: [id],onDelete: Cascade)
+  company       company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   contactWays   contactWay[]
   shipments     shipment[]
   shipmentItems shipmentItem[]
@@ -94,7 +104,7 @@ model user {
   isEmployee  Boolean    @default(true)
   isDriver    Boolean    @default(false)
   companyId   String?
-  company     company?   @relation(fields: [companyId], references: [id],onDelete: Cascade)
+  company     company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   shipments   shipment[]
   phoneNumber String?
   createAt    DateTime   @default(now())
@@ -105,7 +115,7 @@ model way {
   id        String     @id @default(uuid())
   name      String
   companyId String
-  company   company    @relation(fields: [companyId], references: [id],onDelete: Cascade)
+  company   company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   points    point[]
   shipments shipment[]
 
@@ -130,7 +140,7 @@ model note {
   text      String
   createdAt DateTime @default(now())
   companyId String
-  company   company  @relation(fields: [companyId], references: [id],onDelete: Cascade)
+  company   company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }
 
 enum NoteType {
@@ -156,7 +166,7 @@ model shipment {
   client         client[]
   shipmentItems  shipmentItem[]
   companyId      String
-  company        company        @relation(fields: [companyId], references: [id],onDelete: Cascade)
+  company        company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isPaused       Boolean        @default(false)
   isCompleted    Boolean        @default(false)
 
