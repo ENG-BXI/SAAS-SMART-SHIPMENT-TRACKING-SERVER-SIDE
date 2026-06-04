@@ -22,9 +22,9 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { IResponseWithPagination } from 'src/Common/interfaces/IResponseWithPagination.interface';
 
 @Controller({ path: 'client', version: '1' })
-@UseGuards(AuthGuard)
 export class ClientController {
   constructor(private readonly clientService: ClientService) {}
+  @UseGuards(AuthGuard)
   @Get()
   async getAllClients(
     @Req() req: Request,
@@ -60,6 +60,7 @@ export class ClientController {
       status: HttpStatus.OK,
     };
   }
+  @UseGuards(AuthGuard)
   @Post()
   async addNewClient(
     @Body(new ValidationPipe()) client: CreateClientDto,
@@ -78,6 +79,7 @@ export class ClientController {
       status: HttpStatus.OK,
     };
   }
+  @UseGuards(AuthGuard)
   @Put(':id')
   async editClient(
     @Body(new ValidationPipe()) client: UpdateClientDto,
@@ -90,12 +92,29 @@ export class ClientController {
       status: HttpStatus.OK,
     };
   }
+  @UseGuards(AuthGuard)
   @Delete(':id')
   async deleteClient(@Param('id') clientId: string) {
     const deletedClient = await this.clientService.deleteClient(clientId);
     return {
       data: deletedClient,
       message: 'Client deleted successfully',
+      status: HttpStatus.OK,
+    };
+  }
+  // TODO: Add Client Shipment Details API (GET)
+  @Get('/:clientId/shipment/:shipmentId')
+  async getClientShipmentDetails(
+    @Param('clientId') clientId: string,
+    @Param('shipmentId') shipmentId: string,
+  ) {
+    const shipmentDetails = await this.clientService.getClientShipmentDetails(
+      clientId,
+      shipmentId,
+    );
+    return {
+      data: shipmentDetails,
+      message: 'Client shipment details fetched successfully',
       status: HttpStatus.OK,
     };
   }

@@ -387,7 +387,7 @@ export class ShipmentService {
     createShipmenItem: CreateShipmentItemDto,
   ) {
     try {
-      const shipmentItem = await this.prisma.$transaction(async (tx) => {
+      const {client,shipmentItem} = await this.prisma.$transaction(async (tx) => {
         const existShipment = await tx.shipment.findUnique({
           where: { id: shipmentId },
         });
@@ -400,6 +400,12 @@ export class ShipmentService {
         if (!existClient) {
           throw new HttpException('Client not found', HttpStatus.NOT_FOUND);
         }
+        const client = await tx.client.update({
+          where: { id: createShipmenItem.clientId },
+          data: {
+            shipments: { connect: { id: shipmentId } },
+          },
+        });
         const data = createShipmenItem.items.map((item) => {
           return {
             clientId: createShipmenItem.clientId,
@@ -412,9 +418,9 @@ export class ShipmentService {
         const shipmentItem = await tx.shipmentItem.createMany({
           data,
         });
-        return shipmentItem;
+        return { client,shipmentItem };
       });
-      return shipmentItem;
+      return { client, shipmentItem};
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }

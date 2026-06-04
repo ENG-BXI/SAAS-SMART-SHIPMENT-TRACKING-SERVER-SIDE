@@ -24,6 +24,7 @@ export class AuthService {
         password: true,
         id: true,
         email: true,
+        userName:true,
         companyId: true,
         company: {
           select: {
@@ -60,6 +61,7 @@ export class AuthService {
     const status = user.company?.subscription?.status;
     const payload = {
       id: user.id,
+      name: user.userName,
       email: user.email,
       companyId: user.companyId,
       role: role,

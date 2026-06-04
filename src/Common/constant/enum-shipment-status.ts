@@ -1,0 +1,5 @@
+export enum SHIPMENT_STATUS {
+  COMPLETED,
+  PAUSED,
+  CURRENT
+} 
