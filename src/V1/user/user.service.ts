@@ -1,7 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { USER_ROLE, USER_ROLE_FIELD } from '../../Common/constant/user-role';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRepository } from './user.repository';
 import { UserMapper } from './user.mapper';
@@ -9,7 +7,6 @@ import { hashPassword } from 'src/Common/lib';
 @Injectable()
 export class UserService {
   constructor(
-    private readonly prisma: PrismaService,
     private userRepository: UserRepository,
   ) {}
   async getAllUsers(
