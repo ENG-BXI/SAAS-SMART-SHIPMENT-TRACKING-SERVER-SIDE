@@ -1,12 +1,17 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { USER_ROLE, USER_ROLE_FIELD } from '../../Common/constant/user-role';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserRepository } from './user.repository';
+import { UserMapper } from './user.mapper';
+import { hashPassword } from 'src/Common/lib';
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private userRepository: UserRepository,
+  ) {}
   async getAllUsers(
     companyId: string,
     page: number,
@@ -14,60 +19,17 @@ export class UserService {
     search?: string,
   ) {
     try {
-      const users = await this.prisma.user.findMany({
-        where: {
-          AND: [
-            { companyId: companyId },
-            search
-              ? {
-                  OR: [
-                    { userName: { contains: search, mode: 'insensitive' } },
-                    { email: { contains: search, mode: 'insensitive' } },
-                  ],
-                }
-              : {},
-          ],
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-        select: {
-          id: true,
-          userName: true,
-          email: true,
-          isManager: true,
-          isEmployee: true,
-          isDriver: true,
-        },
-      });
-      const userCount = await this.prisma.user.count({
-        where: {
-          AND: [
-            { companyId: companyId },
-            search
-              ? {
-                  OR: [
-                    { userName: { contains: search, mode: 'insensitive' } },
-                    { email: { contains: search, mode: 'insensitive' } },
-                  ],
-                }
-              : {},
-          ],
-        },
-      });
-      const allUsers = users.map((user) => {
-        return {
-          id: user.id,
-          userName: user.userName,
-          email: user.email,
-          role: user.isManager
-            ? USER_ROLE.MANAGER
-            : user.isEmployee
-              ? USER_ROLE.EMPLOYEE
-              : user.isDriver
-                ? USER_ROLE.DRIVER
-                : null,
-        };
-      });
+      const users = await this.userRepository.getAllUsers(
+        companyId,
+        page,
+        limit,
+        search,
+      );
+      const userCount = await this.userRepository.getCountOfAllUser(
+        companyId,
+        search,
+      );
+      const allUsers = UserMapper.toList(users);
       return { users: allUsers, userCount };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -75,32 +37,19 @@ export class UserService {
   }
   async createNewUser(userDto: CreateUserDto, companyId: string) {
     try {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email: userDto.email, companyId: companyId },
-      });
+      const existingUser = await this.userRepository.getUserById(
+        userDto.email,
+        companyId,
+      );
       if (existingUser) {
         throw new HttpException('User already exists', HttpStatus.BAD_REQUEST);
       }
-      const hashedPassword = bcrypt.hashSync(userDto.password, 10);
-      const user = await this.prisma.user.create({
-        data: {
-          email: userDto.email,
-          companyId: companyId,
-          password: hashedPassword,
-          userName: userDto.name,
-          isManager: userDto.role === USER_ROLE.MANAGER,
-          isEmployee: userDto.role === USER_ROLE.EMPLOYEE,
-          isDriver: userDto.role === USER_ROLE.DRIVER,
-        },
-        select: {
-          id: true,
-          email: true,
-          userName: true,
-          isManager: true,
-          isEmployee: true,
-          isDriver: true,
-        },
-      });
+      const hashedPassword = hashPassword(userDto.password);
+      const user = await this.userRepository.createUser(
+        userDto,
+        companyId,
+        hashedPassword,
+      );
       const newUser = {
         id: user.id,
         email: user.email,
@@ -114,48 +63,31 @@ export class UserService {
   }
   async editUser(userId: string, userDto: UpdateUserDto, companyId: string) {
     try {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { id: userId, companyId: companyId },
-      });
+      const existingUser = await this.userRepository.getUserById(
+        companyId,
+        userDto.email,
+      );
       if (!existingUser) {
         throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
       }
       let hashedPassword = existingUser.password;
       if (userDto.password) {
-        hashedPassword = bcrypt.hashSync(userDto.password, 10);
+        hashedPassword = hashPassword(userDto.password);
       }
-      const existEmail = await this.prisma.user.findFirst({
-        where: {
-          email: userDto.email,
-          companyId: companyId,
-          id: {
-            not: userId,
-          },
-        },
-      });
+      const existEmail = await this.userRepository.isEmailAlreadyTaken(
+        userDto.email!,
+        companyId,
+        userId,
+      );
       if (existEmail) {
         throw new HttpException('Email already exists', HttpStatus.BAD_REQUEST);
       }
-      const user = await this.prisma.user.update({
-        where: { id: userId, companyId: companyId },
-        data: {
-          email: userDto.email,
-          companyId: companyId,
-          password: hashedPassword,
-          userName: userDto.name,
-          isManager: userDto.role === USER_ROLE.MANAGER,
-          isEmployee: userDto.role === USER_ROLE.EMPLOYEE,
-          isDriver: userDto.role === USER_ROLE.DRIVER,
-        },
-        select: {
-          id: true,
-          email: true,
-          userName: true,
-          isManager: true,
-          isEmployee: true,
-          isDriver: true,
-        },
-      });
+      const user = await this.userRepository.updateUser(
+        userDto,
+        companyId,
+        userId,
+        hashedPassword,
+      );
       const updatedUser = {
         id: user.id,
         email: user.email,
@@ -169,19 +101,15 @@ export class UserService {
   }
   async deleteUser(userId: string, companyId: string) {
     try {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { id: userId, companyId: companyId },
-      });
+      const existingUser = await this.userRepository.getUserById(
+        companyId,
+        undefined,
+        userId,
+      );
       if (!existingUser) {
         throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
       }
-      const user = await this.prisma.user.delete({
-        where: { id: userId, companyId: companyId },
-        select: {
-          email: true,
-          userName: true,
-        },
-      });
+      const user = await this.userRepository.deleteUser(companyId, userId);
       return user;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -189,16 +117,7 @@ export class UserService {
   }
   async getAllDrivers(companyId: string) {
     try {
-      const drivers = await this.prisma.user.findMany({
-        where: {
-          companyId: companyId,
-          isDriver: true,
-        },
-        select: {
-          id: true,
-          userName: true,
-        },
-      });
+      const drivers = await this.userRepository.getAllDrivers(companyId);
       return drivers;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

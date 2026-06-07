@@ -13,7 +13,6 @@ export class WayRepository {
     limit: number,
     search?: string,
   ) {
-    console.log('ways');
     const ways = await this.prisma.way.findMany({
       where: {
         AND: [
@@ -100,7 +99,6 @@ export class WayRepository {
     });
     return updatedWay;
   }
-
   async deleteWay(wayId: string, companyId: string) {
     const deletedWay = await this.prisma.way.delete({
       where: { id: wayId, companyId: companyId },
