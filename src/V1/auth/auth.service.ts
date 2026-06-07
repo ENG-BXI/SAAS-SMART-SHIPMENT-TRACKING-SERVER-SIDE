@@ -24,7 +24,7 @@ export class AuthService {
         password: true,
         id: true,
         email: true,
-        userName:true,
+        userName: true,
         companyId: true,
         company: {
           select: {
@@ -41,6 +41,9 @@ export class AuthService {
     if (!user) {
       throw new Error('email or password is not correct');
     }
+    // TODO : Denied Client Form Dashboard
+    // Denied driver from dashboard
+    if (user.isDriver) throw new Error('email or password is not correct');
     const isPasswordValid = await bcrypt.compare(
       loginDto.password,
       user.password,

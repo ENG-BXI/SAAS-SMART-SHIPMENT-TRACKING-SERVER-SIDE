@@ -102,7 +102,6 @@ export class ClientController {
       status: HttpStatus.OK,
     };
   }
-  // TODO: Add Client Shipment Details API (GET)
   @Get('/:clientId/shipment/:shipmentId')
   async getClientShipmentDetails(
     @Param('clientId') clientId: string,
