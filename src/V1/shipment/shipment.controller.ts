@@ -210,12 +210,12 @@ export class ShipmentController {
     @Param('id') shipmentId: string,
     @Body(new ValidationPipe()) createShipmenItem: CreateShipmentItemDto,
   ) {
-    const shipmentItem = await this.shipmentService.addClientAndShipmentItem(
+    const { client, shipmentItem } = await this.shipmentService.addClientAndShipmentItem(
       shipmentId,
       createShipmenItem,
     );
     return {
-      data: shipmentItem,
+      data: { client, shipmentItem },
       message: 'Client and shipment item added successfully',
       status: HttpStatus.OK,
     };
