@@ -3,10 +3,14 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { SHIPMENT_STATUS } from 'src/Common/constant/enum-shipment-status';
+import { ClientRepository } from './client.repository';
 
 @Injectable()
 export class ClientService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private clientRepository: ClientRepository,
+  ) {}
   async getAllClient(
     companyId: string,
     page: number,
@@ -14,35 +18,16 @@ export class ClientService {
     search?: string,
   ) {
     try {
-      const clients = await this.prisma.client.findMany({
-        where: {
-          AND: [
-            { companyId: companyId },
-            search ? { name: { contains: search, mode: 'insensitive' } } : {},
-          ],
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-        select: {
-          id: true,
-          name: true,
-          contactWays: {
-            select: {
-              text: true,
-              isPrimary: true,
-              contactType: true,
-            },
-          },
-        },
-      });
-      const clientCount = await this.prisma.client.count({
-        where: {
-          AND: [
-            { companyId: companyId },
-            search ? { name: { contains: search, mode: 'insensitive' } } : {},
-          ],
-        },
-      });
+      const clients = await this.clientRepository.getAllClient(
+        companyId,
+        page,
+        limit,
+        search,
+      );
+      const clientCount = await this.clientRepository.getCountOfClient(
+        companyId,
+        search,
+      );
       return { clients, clientCount };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -50,35 +35,9 @@ export class ClientService {
   }
   async addNewClient(client: CreateClientDto, companyId: string) {
     try {
-      const { newClient, contactWay } = await this.prisma.$transaction(
-        async (tx) => {
-          const newClient = await tx.client.create({
-            data: {
-              name: client.name,
-              companyId: companyId,
-            },
-            select: {
-              id: true,
-              name: true,
-              contactWays: {
-                select: {
-                  id: true,
-                  text: true,
-                  isPrimary: true,
-                  contactType: true,
-                },
-              },
-            },
-          });
-          const contactWays = client.contactWays.map((contactWay) => ({
-            ...contactWay,
-            clientId: newClient.id,
-          }));
-          const contactWay = await tx.contactWay.createMany({
-            data: contactWays,
-          });
-          return { newClient, contactWay };
-        },
+      const { newClient, contactWay } = await this.clientRepository.addClient(
+        client,
+        companyId,
       );
       return { client: newClient, contactWay };
     } catch (error) {
@@ -87,40 +46,12 @@ export class ClientService {
   }
   async editClient(client: UpdateClientDto, clientId: string) {
     try {
-      const existClient = await this.prisma.client.findUnique({
-        where: {
-          id: clientId,
-        },
-      });
+      const existClient = await this.clientRepository.isClientExist(clientId);
       if (!existClient) {
         throw new HttpException('Client not found', HttpStatus.BAD_REQUEST);
       }
-      const { updatedClient, contactWay } = await this.prisma.$transaction(
-        async (tx) => {
-          const updatedClient = await tx.client.update({
-            where: {
-              id: clientId,
-            },
-            data: {
-              name: client.name,
-            },
-          });
-          if (!client.contactWays) return { updatedClient, contactWay: [] };
-          await tx.contactWay.deleteMany({
-            where: {
-              clientId: updatedClient.id,
-            },
-          });
-          const contactWays = client.contactWays.map((contactWay) => ({
-            ...contactWay,
-            clientId: updatedClient.id,
-          }));
-          const contactWay = await tx.contactWay.createMany({
-            data: contactWays,
-          });
-          return { updatedClient, contactWay };
-        },
-      );
+      const { updatedClient, contactWay } =
+        await this.clientRepository.editClient(client, clientId);
       return { client: updatedClient, contactWay };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -128,11 +59,11 @@ export class ClientService {
   }
   async deleteClient(clientId: string) {
     try {
-      const deletedClient = await this.prisma.client.delete({
-        where: {
-          id: clientId,
-        },
-      });
+      const existClient = await this.clientRepository.isClientExist(clientId);
+      if (!existClient) {
+        throw new HttpException('Client not found', HttpStatus.BAD_REQUEST);
+      }
+      const deletedClient = await this.clientRepository.deleteClient(clientId);
       return deletedClient;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -140,14 +71,12 @@ export class ClientService {
   }
   async getClientShipmentDetails(clientId: string, shipmentId: string) {
     try {
-      const existClient = await this.prisma.client.findUnique({
-        where: {
-          id: clientId,
-        },
-      });
+      const existClient = await this.clientRepository.isClientExist(clientId);
+
       if (!existClient) {
         throw new HttpException('Client not found', HttpStatus.BAD_REQUEST);
       }
+      // TODO Get this From Shipment Repository
       const existShipment = await this.prisma.shipment.findUnique({
         where: {
           id: shipmentId,
@@ -156,6 +85,7 @@ export class ClientService {
       if (!existShipment) {
         throw new HttpException('Shipment not found', HttpStatus.BAD_REQUEST);
       }
+      // Added It in a Mapper
       const shipmentDetails = await this.prisma.shipment.findUnique({
         where: {
           id: shipmentId,
