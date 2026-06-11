@@ -5,13 +5,19 @@ import { NoteRepository } from './note.repository';
 
 @Injectable()
 export class NoteService {
-  constructor(
-    private noteRepository: NoteRepository,
-  ) {}
+  constructor(private noteRepository: NoteRepository) {}
   async getAllNotes(page: number, limit: number, search?: string) {
     try {
-      const notes = await this.noteRepository.getAllNotes(page, limit);
-      const noteCount = await this.noteRepository.getCountOfAllNote();
+      const notes = await this.noteRepository.getAllNotes(
+        page,
+        limit,
+        undefined,
+        search,
+      );
+      const noteCount = await this.noteRepository.getCountOfAllNote(
+        undefined,
+        search,
+      );
       return { notes, noteCount };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -28,6 +34,7 @@ export class NoteService {
         page,
         limit,
         companyId,
+        search,
       );
       const noteCount = await this.noteRepository.getCountOfAllNote(companyId);
       return { notes, noteCount };

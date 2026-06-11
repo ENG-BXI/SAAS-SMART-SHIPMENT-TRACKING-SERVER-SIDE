@@ -1,7 +1,8 @@
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
-
+import { Injectable } from '@nestjs/common';
+@Injectable()
 export class NoteRepository {
   constructor(private prisma: PrismaService) {}
   async getAllNotes(
@@ -10,7 +11,7 @@ export class NoteRepository {
     companyId?: string,
     search?: string,
   ) {
-    return await this.prisma.note.findMany({
+    const notes = await this.prisma.note.findMany({
       where: {
         AND: [
           { companyId },
@@ -30,6 +31,7 @@ export class NoteRepository {
         createdAt: true,
       },
     });
+    return notes;
   }
   async getCountOfAllNote(companyId?: string, search?: string) {
     return await this.prisma.note.count({
