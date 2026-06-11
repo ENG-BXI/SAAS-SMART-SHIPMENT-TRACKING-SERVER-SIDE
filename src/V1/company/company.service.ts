@@ -1,12 +1,16 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateCompanyDto } from './dto/create-company.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import * as bcrypt from 'bcrypt';
 import { SubscriptionStatus } from 'generated/prisma/enums';
+import { CompanyRepository } from './company.repository';
+import { hashPassword } from 'src/Common/lib';
+import { SubscriptionRepository } from '../subscription/subscription.repository';
 @Injectable()
 export class CompanyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private companyRepository: CompanyRepository,
+    private subscriptionRepository: SubscriptionRepository,
+  ) {}
   async getAllCompany({
     page,
     limit,
@@ -19,52 +23,13 @@ export class CompanyService {
     filter: string;
   }) {
     try {
-      const companies = await this.prisma.company.findMany({
-        where: {
-          AND: [
-            {
-              OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { location: { contains: search, mode: 'insensitive' } },
-              ],
-            },
-            // Add Filter Subreption
-          ],
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-        select: {
-          id: true,
-          name: true,
-          location: true,
-          createdAt: true,
-          updatedAt: true,
-          users: {
-            take: 1,
-            orderBy: {
-              createAt: 'desc',
-            },
-            select: {
-              email: true,
-            },
-            where: {
-              isManager: true,
-            },
-          },
-          subscription: {
-            select: {
-              typeId: true,
-              status: true,
-            },
-          },
-          _count: {
-            select: {
-              clients: true,
-            },
-          },
-        },
-      });
-      const companiesNumber = await this.prisma.company.count();
+      const companies = await this.companyRepository.getAllCompanies(
+        page,
+        limit,
+        search,
+      );
+      const companiesNumber =
+        await this.companyRepository.getCountOfAllCompanies();
       return { companies, companiesNumber };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -72,43 +37,7 @@ export class CompanyService {
   }
   async getCompanyById(id: string) {
     try {
-      const company = await this.prisma.company.findUnique({
-        where: { id },
-        select: {
-          name: true,
-          location: true,
-          _count: {
-            select: {
-              clients: true,
-            },
-          },
-          subscription: {
-            select: {
-              startDate: true,
-              endDate: true,
-              status: true,
-              type: {
-                select: {
-                  type: true,
-                  durationByMonth: true,
-                },
-              },
-            },
-          },
-          users: {
-            take: 1,
-            orderBy: {
-              createAt: 'desc',
-            },
-            select: {
-              email: true,
-            },
-            where: {
-              isManager: true,
-            },
-          },
-        },
-      });
+      const company = await this.companyRepository.getCompanyById(id);
       if (!company) {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
@@ -119,74 +48,23 @@ export class CompanyService {
   }
   async pauseCompanySubscription(id: string) {
     try {
-      const company = await this.prisma.company.findUnique({
-        where: { id },
-        select: {
-          name: true,
-          location: true,
-          _count: {
-            select: {
-              clients: true,
-            },
-          },
-          subscription: {
-            select: {
-              startDate: true,
-              endDate: true,
-              status: true,
-              type: {
-                select: {
-                  type: true,
-                  durationByMonth: true,
-                },
-              },
-            },
-          },
-          users: {
-            take: 1,
-            orderBy: {
-              createAt: 'desc',
-            },
-            select: {
-              email: true,
-            },
-            where: {
-              isManager: true,
-            },
-          },
-        },
+      const company = await this.companyRepository.isCompanyExist({
+        companyId: id,
       });
       if (!company) {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
-      const isSubscriptionStatusRunning =
-        await this.prisma.subscription.findFirst({
-          where: {
-            companyId: id,
-            NOT: {
-              OR: [
-                { status: SubscriptionStatus.inactive },
-                { status: SubscriptionStatus.pending },
-                { status: SubscriptionStatus.expired },
-              ],
-            },
-          },
-          select: {
-            status: true,
-          },
-        });
-      if (!isSubscriptionStatusRunning) {
+      const CompanySubscriptionStatus =
+        await this.companyRepository.CompanySubscriptionStatus(id);
+
+      if (CompanySubscriptionStatus?.status !== SubscriptionStatus.active) {
         throw new HttpException(
           'This Company Subscription Not Active For disActive',
           HttpStatus.BAD_REQUEST,
         );
       }
-      const disActiveCompany = await this.prisma.subscription.update({
-        where: { companyId: id },
-        data: {
-          status: SubscriptionStatus.inactive,
-        },
-      });
+      const disActiveCompany =
+        await this.companyRepository.disActiveCompany(id);
       return disActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -194,68 +72,23 @@ export class CompanyService {
   }
   async activeCompanySubscription(id: string) {
     try {
-      const company = await this.prisma.company.findUnique({
-        where: { id },
-        select: {
-          name: true,
-          location: true,
-          _count: {
-            select: {
-              clients: true,
-            },
-          },
-          subscription: {
-            select: {
-              startDate: true,
-              endDate: true,
-              status: true,
-              type: {
-                select: {
-                  type: true,
-                  durationByMonth: true,
-                },
-              },
-            },
-          },
-          users: {
-            take: 1,
-            orderBy: {
-              createAt: 'desc',
-            },
-            select: {
-              email: true,
-            },
-            where: {
-              isManager: true,
-            },
-          },
-        },
+      const company = await this.companyRepository.isCompanyExist({
+        companyId: id,
       });
       if (!company) {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
       const isSubscriptionStatusInActive =
-        await this.prisma.subscription.findFirst({
-          where: {
-            companyId: id,
-            status: SubscriptionStatus.inactive,
-          },
-          select: {
-            status: true,
-          },
-        });
-      if (!isSubscriptionStatusInActive) {
+        await this.companyRepository.CompanySubscriptionStatus(id);
+      if (
+        isSubscriptionStatusInActive?.status !== SubscriptionStatus.inactive
+      ) {
         throw new HttpException(
           'This Company Subscription Not InActive For Activation Subscription',
           HttpStatus.BAD_REQUEST,
         );
       }
-      const ActiveCompany = await this.prisma.subscription.update({
-        where: { companyId: id },
-        data: {
-          status: SubscriptionStatus.active,
-        },
-      });
+      const ActiveCompany = await this.companyRepository.activeCompany(id);
       return ActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -263,86 +96,37 @@ export class CompanyService {
   }
   async RequestSubscriptionCompany(createCompanyDto: CreateCompanyDto) {
     try {
-      const existingCompany = await this.prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: createCompanyDto.companyEmail },
-            {
-              company: {
-                name: createCompanyDto.name,
-              },
-            },
-          ],
-        },
+      const existingCompany = await this.companyRepository.isCompanyExist({
+        companyEmail: createCompanyDto.companyEmail,
+        companyName: createCompanyDto.name,
       });
+      const emailOfCompany = await this.companyRepository.getEmailForCompany(
+        existingCompany?.id,
+      );
       if (existingCompany) {
         const message =
-          existingCompany.email === createCompanyDto.companyEmail
+          emailOfCompany?.users[0].email === createCompanyDto.companyEmail
             ? 'Company with this email already exists'
             : 'Company with this name already exists';
         throw new HttpException(message, HttpStatus.BAD_REQUEST);
       }
-      const hashedPassword = await bcrypt.hash(
-        createCompanyDto.companyPassword,
-        10,
-      );
-      const subscriptionType = await this.prisma.subscriptionType.findUnique({
-        where: {
+      const hashedPassword = hashPassword(createCompanyDto.companyPassword);
+
+      const subscriptionType =
+        await this.subscriptionRepository.getSubscriptionType({
           id: createCompanyDto.subscriptionType,
-        },
-        select: {
-          id: true,
-        },
-      });
+        });
       if (!subscriptionType)
         throw new HttpException(
           'Cannot Find Subscription Type',
           HttpStatus.BAD_REQUEST,
         );
-      const { company, user, subscription } = await this.prisma.$transaction(
-        async (tx) => {
-          const company = await tx.company.create({
-            data: {
-              name: createCompanyDto.name,
-              location: createCompanyDto.location,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-          });
-          // Manager Of Company
-          const user = await tx.user.create({
-            data: {
-              email: createCompanyDto.companyEmail,
-              password: hashedPassword,
-              userName: `Manager of ${createCompanyDto.name}`,
-              isAdmin: false,
-              isManager: true,
-              isEmployee: false,
-              isDriver: false,
-              companyId: company.id,
-            },
-            select: {
-              id: true,
-              email: true,
-              userName: true,
-              isAdmin: true,
-              isManager: true,
-              isEmployee: true,
-              isDriver: true,
-              companyId: true,
-            },
-          });
-          const subscription = await tx.subscription.create({
-            data: {
-              status: SubscriptionStatus.pending,
-              companyId: company.id,
-              typeId: subscriptionType.id,
-            },
-          });
-          return { company, user, subscription };
-        },
-      );
-
+      const { company, user, subscription } =
+        await this.companyRepository.createCompanyAndManagerAndSubscriptionWhenCompanyRequest(
+          createCompanyDto,
+          hashedPassword,
+          subscriptionType.id,
+        );
       return { company, user, subscription };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -362,90 +146,15 @@ export class CompanyService {
     try {
       const [companies, pendingCompanyCount, changeCompanyCount] =
         await Promise.all([
-          await this.prisma.company.findMany({
-            where: {
-              AND: [
-                {
-                  OR: [
-                    { name: { contains: search, mode: 'insensitive' } },
-                    { location: { contains: search, mode: 'insensitive' } },
-                  ],
-                },
-                // Add Filter Subreption
-                {
-                  subscription: {
-                    OR: [
-                      {
-                        status: SubscriptionStatus.pending,
-                      },
-                      { status: SubscriptionStatus.change },
-                    ],
-                  },
-                },
-              ],
-            },
-            skip: (page - 1) * limit,
-            take: limit,
-            select: {
-              id: true,
-              name: true,
-              location: true,
-              createdAt: true,
-              updatedAt: true,
-              users: {
-                take: 1,
-                orderBy: {
-                  createAt: 'desc',
-                },
-                select: {
-                  email: true,
-                },
-                where: {
-                  isManager: true,
-                },
-              },
-              subscription: {
-                select: {
-                  startDate: true,
-                  endDate: true,
-                  status: true,
-                  newTypeId: true,
-                  type: {
-                    select: {
-                      id: true,
-                      type: true,
-                      price: true,
-                      durationByMonth: true,
-                    },
-                  },
-                },
-              },
-            },
-          }),
-          await this.prisma.company.count({
-            where: {
-              subscription: { status: SubscriptionStatus.pending },
-            },
-          }),
-          await this.prisma.company.count({
-            where: {
-              subscription: { status: SubscriptionStatus.change },
-            },
-          }),
+          await this.companyRepository.getAllRequestSubscriptionCompanies(
+            page,
+            limit,
+            search,
+          ),
+          await this.companyRepository.getPendingCompanyCount(),
+          await this.companyRepository.getChangeCompanyCount(),
         ]);
 
-      // const newData = companies.map((item) => {
-      //   return {
-      //     ...item,
-      //     subscription: {
-      //       ...item.subscription,
-      //       type: {
-      //         ...item.subscription?.type,
-      //         id: item.subscription?.newType?.id || item.subscription?.type.id,
-      //       },
-      //     },
-      //   };
-      // });
       return { companies, pendingCompanyCount, changeCompanyCount };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -453,92 +162,37 @@ export class CompanyService {
   }
   async createCompany(createCompanyDto: CreateCompanyDto) {
     try {
-      const existingCompany = await this.prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: createCompanyDto.companyEmail },
-            {
-              company: {
-                name: createCompanyDto.name,
-              },
-            },
-          ],
-        },
+      const existingCompany = await this.companyRepository.isCompanyExist({
+        companyEmail: createCompanyDto.companyEmail,
+        companyName: createCompanyDto.name,
       });
+      const emailOfCompany = await this.companyRepository.getEmailForCompany(
+        existingCompany?.id,
+      );
 
       if (existingCompany) {
         const message =
-          existingCompany.email === createCompanyDto.companyEmail
+          emailOfCompany?.users[0].email === createCompanyDto.companyEmail
             ? 'Company with this email already exists'
             : 'Company with this name already exists';
         throw new HttpException(message, HttpStatus.BAD_REQUEST);
       }
-      const hashedPassword = await bcrypt.hash(
-        createCompanyDto.companyPassword,
-        10,
-      );
-      const subscriptionType = await this.prisma.subscriptionType.findUnique({
-        where: {
+      const hashedPassword = hashPassword(createCompanyDto.companyPassword);
+      const subscriptionType =
+        await this.subscriptionRepository.getSubscriptionType({
           id: createCompanyDto.subscriptionType,
-        },
-        select: {
-          durationByMonth: true,
-        },
-      });
+        });
       if (!subscriptionType)
         throw new HttpException(
           'Cannot Find Subscription Type',
           HttpStatus.BAD_REQUEST,
         );
-      const { company, user, subscription } = await this.prisma.$transaction(
-        async (tx) => {
-          const company = await tx.company.create({
-            data: {
-              name: createCompanyDto.name,
-              location: createCompanyDto.location,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-          });
-          const user = await tx.user.create({
-            data: {
-              email: createCompanyDto.companyEmail,
-              password: hashedPassword,
-              userName: `Manager of ${createCompanyDto.name}`,
-              isAdmin: false,
-              isManager: true,
-              isEmployee: false,
-              isDriver: false,
-              companyId: company.id,
-            },
-            select: {
-              id: true,
-              email: true,
-              userName: true,
-              isAdmin: true,
-              isManager: true,
-              isEmployee: true,
-              isDriver: true,
-              companyId: true,
-            },
-          });
-          const startDate = new Date();
-          const startMonth = startDate.getMonth();
-          const endDate = new Date();
-          endDate.setMonth(startMonth + subscriptionType.durationByMonth);
-
-          const subscription = await tx.subscription.create({
-            data: {
-              status: SubscriptionStatus.active,
-              startDate,
-              endDate,
-              companyId: company.id,
-              typeId: createCompanyDto.subscriptionType,
-            },
-          });
-          return { company, user, subscription };
-        },
-      );
+      const { company, user, subscription } =
+        await this.companyRepository.createCompanyFormAdminDashboard(
+          createCompanyDto,
+          hashedPassword,
+          subscriptionType.durationByMonth,
+        );
 
       return { company, user, subscription };
     } catch (error) {
@@ -547,44 +201,20 @@ export class CompanyService {
   }
   async updateCompany(id: string, updateCompanyDto: UpdateCompanyDto) {
     try {
-      const existingCompany = await this.prisma.company.findUnique({
-        where: { id },
-        include: {
-          users: {
-            where: {
-              isManager: true,
-            },
-            select: {
-              id: true,
-            },
-            orderBy: {
-              createAt: 'desc',
-            },
-            take: 1,
-          },
-          subscription: {
-            select: {
-              id: true,
-              typeId: true,
-            },
-          },
-        },
-      });
+      const existingCompany =
+        await this.companyRepository.getCompanyWithUsersWithSubscriptionInfo(
+          id,
+        );
       if (!existingCompany) {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
 
-      const existingCompanyWithSameEmail = await this.prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: updateCompanyDto.companyEmail },
-            { company: { name: updateCompanyDto.name } },
-          ],
-          // check all company but not current company by this id
-          // because we are send same email and name when update another property
-          companyId: { not: id },
-        },
-      });
+      const existingCompanyWithSameEmail =
+        await this.companyRepository.isEmailUsedInAnotherCompany(
+          id,
+          updateCompanyDto.companyEmail,
+          updateCompanyDto.name,
+        );
 
       if (existingCompanyWithSameEmail) {
         const message =
@@ -593,15 +223,10 @@ export class CompanyService {
             : 'Company with this name already exists';
         throw new HttpException(message, HttpStatus.BAD_REQUEST);
       }
-
-      const subscriptionType = await this.prisma.subscriptionType.findUnique({
-        where: {
+      const subscriptionType =
+        await this.subscriptionRepository.getSubscriptionType({
           id: updateCompanyDto.subscriptionType,
-        },
-        select: {
-          durationByMonth: true,
-        },
-      });
+        });
 
       if (!subscriptionType)
         throw new HttpException(
@@ -614,62 +239,18 @@ export class CompanyService {
 
       let hashedPassword;
       if (updateCompanyDto.companyPassword) {
-        hashedPassword = await bcrypt.hash(
-          updateCompanyDto.companyPassword,
-          10,
-        );
+        hashedPassword = hashPassword(updateCompanyDto.companyPassword);
       }
-      const { company, user, subscription } = await this.prisma.$transaction(
-        async (tx) => {
-          const company = await tx.company.update({
-            where: { id },
-            data: {
-              name: updateCompanyDto.name,
-              location: updateCompanyDto.location,
-              updatedAt: new Date(),
-            },
-          });
-          const user = await tx.user.update({
-            where: { id: existingCompany.users[0].id },
-            data: {
-              email: updateCompanyDto.companyEmail,
-              password: hashedPassword,
-              userName: `Manager of ${company.name}`,
-            },
-            select: {
-              id: true,
-              email: true,
-              userName: true,
-              isAdmin: true,
-              isManager: true,
-              isEmployee: true,
-              isDriver: true,
-              companyId: true,
-            },
-          });
-          if (isChangeSubscription) {
-            const startDate = new Date();
-            const startMonth = startDate.getMonth();
-            const endDate = new Date();
-            endDate.setMonth(startMonth + subscriptionType.durationByMonth);
-
-            const subscription = await tx.subscription.update({
-              where: {
-                id: existingCompany.subscription?.id,
-              },
-              data: {
-                status: 'active',
-                startDate,
-                endDate,
-                companyId: company.id,
-                typeId: updateCompanyDto.subscriptionType,
-              },
-            });
-            return { company, user, subscription };
-          }
-          return { company, user };
-        },
-      );
+      const { company, user, subscription } =
+        await this.companyRepository.updateCompanyWitManagerWithSubscriptionIfEdited(
+          id,
+          updateCompanyDto,
+          hashedPassword,
+          subscriptionType.durationByMonth,
+          existingCompany.users[0].id,
+          existingCompany.subscription?.id,
+          isChangeSubscription,
+        );
       return { company, user, subscription };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -677,13 +258,13 @@ export class CompanyService {
   }
   async deleteCompany(id: string) {
     try {
-      const existCompany = await this.prisma.company.findUnique({
-        where: { id },
+      const existCompany = await this.companyRepository.isCompanyExist({
+        companyId: id,
       });
       if (!existCompany) {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
-      const company = await this.prisma.company.delete({ where: { id } });
+      const company = await this.companyRepository.deleteCompany(id);
       return company;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

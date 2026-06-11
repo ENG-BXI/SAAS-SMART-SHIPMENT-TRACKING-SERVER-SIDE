@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { CreateStatisticDto } from './dto/create-statistic.dto';
-import { UpdateStatisticDto } from './dto/update-statistic.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { StatisticsRepository } from './statistics.repository';
+import { StatisticsMapper } from './statistics.mapper';
 
 @Injectable()
 export class StatisticsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private statisticsRepository: StatisticsRepository,
+  ) {}
   /*
     numberOfShipments,
     numberOfCurrentShipments,
@@ -21,35 +22,19 @@ export class StatisticsService {
       numberOfClients,
       numberOfWays,
     ] = await Promise.all([
-      this.prisma.shipment.count({
-        where: {
-          companyId,
-        },
+      this.statisticsRepository.getCountOfShipments({ companyId }),
+      this.statisticsRepository.getCountOfShipments({
+        companyId,
+        isPaused: false,
+        isCompleted: false,
       }),
-      this.prisma.shipment.count({
-        where: {
-          companyId,
-          isPaused: false,
-          isCompleted: false,
-        },
+      this.statisticsRepository.getCountOfShipments({
+        companyId,
+        isPaused: false,
+        isCompleted: true,
       }),
-      this.prisma.shipment.count({
-        where: {
-          companyId,
-          isPaused: false,
-          isCompleted: true,
-        },
-      }),
-      this.prisma.client.count({
-        where: {
-          companyId,
-        },
-      }),
-      this.prisma.way.count({
-        where: {
-          companyId,
-        },
-      }),
+      this.statisticsRepository.getCountOfClient(companyId),
+      this.statisticsRepository.getCountOfWay(companyId),
     ]);
     return {
       numberOfShipments,
@@ -84,71 +69,16 @@ export class StatisticsService {
       numberOfPausedCompanies,
       CompanyByMonth,
     ] = await Promise.all([
-      this.prisma.company.count(),
-      this.prisma.company.count({
-        where: {
-          subscription: {
-            OR: [{ status: 'pending' }, { status: 'change' }],
-          },
-        },
-      }),
-      this.prisma.system.findFirst({
-        where: { name: 'NUMBER_OF_VISITOR' },
-        select: { value: true },
-      }),
-      this.prisma.note.count(),
-      this.prisma.company.count({
-        where: {
-          subscription: {
-            endDate: {
-              lt: new Date(),
-            },
-          },
-        },
-      }),
-      this.prisma.company.count({
-        where: {
-          subscription: {
-            status: 'inactive',
-          },
-        },
-      }),
-      this.prisma.company.findMany({
-        select: {
-          createdAt: true,
-        },
-        where: {
-          createdAt: {
-            gte: new Date(year, 0, 1),
-            lte: new Date(year, 11, 31),
-          },
-        },
-      }),
+      this.statisticsRepository.getCountOfCompany(),
+      this.statisticsRepository.getCountOfSubscriptionRequestCompany(),
+      this.statisticsRepository.getCountOfVisited(),
+      this.statisticsRepository.getCountOfNote(),
+      this.statisticsRepository.getCountOfExpireCompanySubscription(),
+      this.statisticsRepository.getCountOfInActiveCompany(),
+      this.statisticsRepository.getChartCompanyData(year),
     ]);
-    const monthNames = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
 
-    const returnCompaniesByMonth = Array.from({ length: 12 }, (_, index) => ({
-      month: monthNames[index],
-      count: 0,
-    }));
-
-    CompanyByMonth.forEach((company) => {
-      const monthIndex = new Date(company.createdAt).getMonth();
-      returnCompaniesByMonth[monthIndex].count++;
-    });
+    const returnCompaniesByMonth = StatisticsMapper.toChartList(CompanyByMonth);
     return {
       numberOfCompanies,
       numberOfSubscriptionRequest,
@@ -162,25 +92,19 @@ export class StatisticsService {
 
   async addVisit() {
     try {
-      const isNumberOfVisitExist = await this.prisma.system.findFirst();
+      const isNumberOfVisitExist =
+        await this.statisticsRepository.isVisitedTableIsNotEmpty();
       if (
         isNumberOfVisitExist &&
         isNumberOfVisitExist.name == 'NUMBER_OF_VISITOR'
       ) {
-        const addedVisit = await this.prisma.system.update({
-          where: { name: 'NUMBER_OF_VISITOR' },
-          data: {
-            value: (Number(isNumberOfVisitExist.value) + 1).toString(),
-          },
-        });
+        const addedVisit =
+          await this.statisticsRepository.IncreaseNumberOfVisit(
+            isNumberOfVisitExist.value,
+          );
         return addedVisit;
       } else {
-        const addedVisit = await this.prisma.system.create({
-          data: {
-            name: 'NUMBER_OF_VISITOR',
-            value: '1',
-          },
-        });
+        const addedVisit = await this.statisticsRepository.InitialVisitTable();
         return addedVisit;
       }
     } catch (error) {}
