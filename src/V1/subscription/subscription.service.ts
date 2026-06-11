@@ -32,9 +32,9 @@ export class SubscriptionService {
     SubscriptionDto: CreateSubscriptionDto,
   ) {
     const subscriptionType =
-      await this.subscriptionRepository.getSubscriptionType(
-        SubscriptionDto.type,
-      );
+      await this.subscriptionRepository.getSubscriptionType({
+        type: SubscriptionDto.type,
+      });
     // Check the type is invalid?
     if (!subscriptionType) {
       throw new HttpException(
