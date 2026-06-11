@@ -1,42 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { USER_ROLE } from 'src/Common/constant/user-role';
+import { AuthRepository } from './auth.repository';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
     private jwtService: JwtService,
+    private authRepository: AuthRepository,
   ) {}
   async login(loginDto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        email: loginDto.email,
-      },
-      select: {
-        isAdmin: true,
-        isDriver: true,
-        isEmployee: true,
-        isManager: true,
-        password: true,
-        id: true,
-        email: true,
-        userName: true,
-        companyId: true,
-        company: {
-          select: {
-            subscription: {
-              select: {
-                status: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const user = await this.authRepository.login(loginDto.email)
     // Check if user exist
     if (!user) {
       throw new Error('email or password is not correct');
