@@ -4,9 +4,7 @@ import { StatisticsMapper } from './statistics.mapper';
 
 @Injectable()
 export class StatisticsService {
-  constructor(
-    private statisticsRepository: StatisticsRepository,
-  ) {}
+  constructor(private statisticsRepository: StatisticsRepository) {}
   /*
     numberOfShipments,
     numberOfCurrentShipments,

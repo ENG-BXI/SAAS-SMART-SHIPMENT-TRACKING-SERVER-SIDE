@@ -23,9 +23,10 @@ export class StatisticsMapper {
   );
 
   static toChartList(CompanyByMonth: { createdAt }[]) {
-    return CompanyByMonth.forEach((company) => {
+    CompanyByMonth.forEach((company) => {
       const monthIndex = new Date(company.createdAt).getMonth();
       this.returnCompaniesByMonth[monthIndex].count++;
     });
+    return this.returnCompaniesByMonth;
   }
 }

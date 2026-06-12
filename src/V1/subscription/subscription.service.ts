@@ -4,6 +4,7 @@ import { CreateSubscriptionTypeDto } from './dto/CreateSubscriptionType.dto';
 import { UpdateSubscriptionTypeDto } from './dto/UpdateSubscriptionType.dto';
 import { SubscriptionRepository } from './subscription.repository';
 import { CompanyRepository } from '../company/company.repository';
+import { ShipmentItemDto } from '../shipment/dto/create-shipment-item.dto';
 
 @Injectable()
 export class SubscriptionService {
@@ -30,30 +31,34 @@ export class SubscriptionService {
     companyId: string,
     SubscriptionDto: CreateSubscriptionDto,
   ) {
-    const subscriptionType =
-      await this.subscriptionRepository.getSubscriptionType({
-        type: SubscriptionDto.type,
-      });
-    // Check the type is invalid?
-    if (!subscriptionType) {
-      throw new HttpException(
-        'Subscription type not found',
-        HttpStatus.BAD_REQUEST,
-      );
+    try {
+      const subscriptionType =
+        await this.subscriptionRepository.getSubscriptionType({
+          id: SubscriptionDto.type,
+        });
+      // Check the type is invalid?
+      if (!subscriptionType) {
+        throw new HttpException(
+          'Subscription type not found',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const company = await this.companyRepository.getCompanyById(companyId);
+      // check the company in exist
+      if (!company) {
+        throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
+      }
+      const newSubscription =
+        await this.subscriptionRepository.addSubscriptionForRequestCompany(
+          companyId,
+          SubscriptionDto,
+          subscriptionType.durationByMonth,
+          company.subscription?.newTypeId,
+        );
+      return newSubscription;
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
-    const company = await this.companyRepository.getCompanyById(companyId);
-    // check the company in exist
-    if (!company) {
-      throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
-    }
-    const newSubscription =
-      await this.subscriptionRepository.addSubscriptionForRequestCompany(
-        companyId,
-        SubscriptionDto,
-        subscriptionType.durationByMonth,
-        company.subscription?.newTypeId,
-      );
-    return newSubscription;
   }
   async getSubscription(companyId: string) {
     const existCompany = await this.companyRepository.isCompanyExist({
