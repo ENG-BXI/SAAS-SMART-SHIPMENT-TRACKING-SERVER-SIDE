@@ -1,16 +1,15 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
-import { SubscriptionStatus } from 'generated/prisma/enums';
 import { CreateSubscriptionTypeDto } from './dto/CreateSubscriptionType.dto';
 import { UpdateSubscriptionTypeDto } from './dto/UpdateSubscriptionType.dto';
 import { SubscriptionRepository } from './subscription.repository';
+import { CompanyRepository } from '../company/company.repository';
 
 @Injectable()
 export class SubscriptionService {
   constructor(
-    private prisma: PrismaService,
     private subscriptionRepository: SubscriptionRepository,
+    private companyRepository: CompanyRepository,
   ) {}
   async getAllSubscription(page: number, search?: string) {
     try {
@@ -42,21 +41,7 @@ export class SubscriptionService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    // Keeep it in Company Repository
-    const company = await this.prisma.company.findUnique({
-      where: {
-        id: companyId,
-      },
-      select: {
-        subscription: {
-          select: {
-            startDate: true,
-            endDate: true,
-            newTypeId: true,
-          },
-        },
-      },
-    });
+    const company = await this.companyRepository.getCompanyById(companyId);
     // check the company in exist
     if (!company) {
       throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
@@ -71,9 +56,8 @@ export class SubscriptionService {
     return newSubscription;
   }
   async getSubscription(companyId: string) {
-    // TODO : make it in Company Repository
-    const existCompany = await this.prisma.company.findUnique({
-      where: { id: companyId },
+    const existCompany = await this.companyRepository.isCompanyExist({
+      companyId,
     });
     if (!existCompany) {
       throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
@@ -83,12 +67,10 @@ export class SubscriptionService {
     return subscription;
   }
   async editCompanySubscription(companyId: string, subscriptionTypeId: string) {
-    // TODO : make it in Company Repository
-    const existCompany = await this.prisma.company.findUnique({
-      where: {
-        id: companyId,
-      },
+    const existCompany = await this.companyRepository.isCompanyExist({
+      companyId,
     });
+
     if (!existCompany) {
       throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
     }
@@ -110,14 +92,8 @@ export class SubscriptionService {
   }
 
   async getSubscriptionType() {
-    const subscriptionType = await this.prisma.subscriptionType.findMany({
-      select: {
-        id: true,
-        type: true,
-        price: true,
-        durationByMonth: true,
-      },
-    });
+    const subscriptionType =
+      await this.subscriptionRepository.getAllSubscriptionType();
     return subscriptionType;
   }
   async addSubscriptionType(

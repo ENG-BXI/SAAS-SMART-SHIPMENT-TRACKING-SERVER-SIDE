@@ -1,15 +1,15 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateClientDto } from './dto/create-client.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateClientDto } from './dto/update-client.dto';
-import { SHIPMENT_STATUS } from 'src/Common/constant/enum-shipment-status';
 import { ClientRepository } from './client.repository';
+import { ShipmentRepository } from '../shipment/shipment.repository';
+import { ClientMapper } from './client.mapper';
 
 @Injectable()
 export class ClientService {
   constructor(
-    private readonly prisma: PrismaService,
     private clientRepository: ClientRepository,
+    private shipmentRepository: ShipmentRepository,
   ) {}
   async getAllClient(
     companyId: string,
@@ -76,118 +76,17 @@ export class ClientService {
       if (!existClient) {
         throw new HttpException('Client not found', HttpStatus.BAD_REQUEST);
       }
-      // TODO Get this From Shipment Repository
-      const existShipment = await this.prisma.shipment.findUnique({
-        where: {
-          id: shipmentId,
-        },
-      });
+      const existShipment =
+        await this.shipmentRepository.isShipmentExist(shipmentId);
       if (!existShipment) {
         throw new HttpException('Shipment not found', HttpStatus.BAD_REQUEST);
       }
-      // Added It in a Mapper
-      const shipmentDetails = await this.prisma.shipment.findUnique({
-        where: {
-          id: shipmentId,
-        },
-        select: {
-          shipmentNumber: true,
-          isCompleted: true,
-          isPaused: true,
-          launchDate: true,
-          shipmentItems: {
-            where: { clientId },
-            select: { name: true, quantity: true, isBreakable: true },
-          },
-          way: {
-            select: {
-              points: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-                orderBy: { order: 'asc' },
-              },
-              name: true,
-            },
-          },
-          company: {
-            select: {
-              name: true,
-              users: {
-                select: { email: true, userName: true },
-                where: { isEmployee: true },
-                take: 1,
-                orderBy: { createAt: 'asc' },
-              },
-            },
-          },
-          client: {
-            take: 1,
-            where: { id: clientId },
-            select: {
-              name: true,
-              contactWays: {
-                select: { text: true, contactType: true, isPrimary: true },
-              },
-            },
-          },
-          driver: {
-            select: { userName: true, phoneNumber: true, email: true },
-          },
-          currentPointId: true,
-        },
-      });
-      const shipmentNumber = shipmentDetails?.shipmentNumber;
-      const wayPointsLength = shipmentDetails?.way.points.length || 0;
-      const firstPoint = shipmentDetails?.way.points[0].name;
-      const lastPoint = shipmentDetails?.way.points[wayPointsLength - 1].name;
-      const shipmentStatus = shipmentDetails?.isCompleted
-        ? SHIPMENT_STATUS.COMPLETED
-        : shipmentDetails?.isPaused
-          ? SHIPMENT_STATUS.PAUSED
-          : SHIPMENT_STATUS.CURRENT;
-      const companyName = shipmentDetails?.company.name;
-      const _orderOfCurrentPoint =
-        shipmentDetails?.way.points.findIndex((val) => {
-          return val.id == shipmentDetails?.currentPointId;
-        }) || 0;
-      const reminderPoint =
-        shipmentDetails?.way.points.reduce((pre, cur, idx) => {
-          return _orderOfCurrentPoint < idx ? pre + 1 : pre;
-        }, 0) || 0;
-      const _countOfPrePoint = Math.round(wayPointsLength - reminderPoint);
-      const percentageOfPoint = (_countOfPrePoint / wayPointsLength) * 100;
-      const shipmentItem = shipmentDetails?.shipmentItems;
-      const clientNameAndContactWay = shipmentDetails?.client[0];
-      const allPointName = shipmentDetails?.way.points.map((val) => {
-        return {
-          name: val.name,
-          isCurrent: val.id == shipmentDetails?.currentPointId,
-        };
-      });
-      const companyEmployee = shipmentDetails?.company.users[0];
-      const driverInfo = shipmentDetails?.driver;
-      const nextPoint = shipmentDetails?.isCompleted
-        ? null
-        : shipmentDetails?.way.points[_orderOfCurrentPoint + 1];
-
-      const responseData = {
-        shipmentNumber,
-        wayPointsLength,
-        firstPoint,
-        lastPoint,
-        shipmentStatus,
-        companyName,
-        reminderPoint,
-        percentageOfPoint,
-        shipmentItem,
-        clientNameAndContactWay,
-        allPointName,
-        companyEmployee,
-        driverInfo,
-        nextPoint,
-      };
+      const shipmentDetails =
+        await this.shipmentRepository.getShipmentWithShipmentItemWithWatWithCompanyWithClientWithDriver(
+          shipmentId,
+          clientId,
+        );
+      const responseData = ClientMapper.formatted(shipmentDetails);
       return responseData;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
