@@ -70,6 +70,16 @@ export class SubscriptionRepository {
     });
     return allSubscriptionCount;
   }
+  async getAllSubscriptionType() {
+    return await this.prisma.subscriptionType.findMany({
+      select: {
+        id: true,
+        type: true,
+        price: true,
+        durationByMonth: true,
+      },
+    });
+  }
   async getSubscriptionType({
     id,
     type,

@@ -72,6 +72,7 @@ export class CompanyRepository {
             startDate: true,
             endDate: true,
             status: true,
+            newTypeId:true,
             type: {
               select: {
                 type: true,
