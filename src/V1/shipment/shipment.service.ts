@@ -69,9 +69,11 @@ export class ShipmentService {
       }
       const clients =
         await this.shipmentRepository.getCountOfClientInShipment(shipmentId);
+      const shipmentItem = await this.shipmentRepository.getCountOfShipmentItemInShipment(companyId,shipmentId)
       const shipments = {
         ...shipment,
         clients,
+        shipmentItem
       };
       return shipments;
     } catch (error) {
