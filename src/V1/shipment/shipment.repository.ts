@@ -165,10 +165,7 @@ export class ShipmentRepository {
       },
     });
   }
-  async createNewShipment(
-    Shipment: CreateShipmentDto,
-    companyId: string,
-  ) {
+  async createNewShipment(Shipment: CreateShipmentDto, companyId: string) {
     return await this.prisma.$transaction(async (tx) => {
       const isWayExist = await tx.way.findUnique({
         where: { id: Shipment.wayId, companyId: companyId },
@@ -206,6 +203,7 @@ export class ShipmentRepository {
           driver: {
             select: {
               userName: true,
+              email: true,
             },
           },
         },
@@ -457,6 +455,19 @@ export class ShipmentRepository {
           endDate: isComplete ? new Date() : null,
           isPaused: false,
         },
+        select: {
+          id: true,
+          companyId: true,
+          shipmentNumber: true,
+          launchDate: true,
+          endDate: true,
+          wayId: true,
+          way:{select:{name:true}},
+          currentPointId: true,
+          driverId: true,
+          isPaused: true,
+          isCompleted: true,
+        },
       });
       return { shipment };
     });
@@ -474,7 +485,8 @@ export class ShipmentRepository {
     });
   }
   async getShipmentWithShipmentItemWithWatWithCompanyWithClientWithDriver(
-    shipmentId:string,clientId:string,
+    shipmentId: string,
+    clientId: string,
   ) {
     return await this.prisma.shipment.findUnique({
       where: {

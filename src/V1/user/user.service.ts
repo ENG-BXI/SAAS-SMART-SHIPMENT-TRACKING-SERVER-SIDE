@@ -4,10 +4,13 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRepository } from './user.repository';
 import { UserMapper } from './user.mapper';
 import { hashPassword } from 'src/Common/lib';
+import { EmailService } from '../email/email.service';
+import { newUserCreatedEmail } from '../email/emails/newUserCreatedEmail';
 @Injectable()
 export class UserService {
   constructor(
     private userRepository: UserRepository,
+    private emailService: EmailService,
   ) {}
   async getAllUsers(
     companyId: string,
@@ -53,6 +56,15 @@ export class UserService {
         userName: user.userName,
         role: userDto.role,
       };
+      const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
+      await this.emailService.sendMail(
+        newUserCreatedEmail(
+          user.email,
+          user.userName.toUpperCase(),
+          userDto.role,
+          ClientSideDomain!,
+        ),
+      );
       return newUser;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

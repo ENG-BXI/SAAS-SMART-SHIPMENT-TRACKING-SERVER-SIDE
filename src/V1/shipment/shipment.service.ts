@@ -4,11 +4,18 @@ import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { CreateShipmentItemDto } from './dto/create-shipment-item.dto';
 import { UpdateShipmentItemDto } from './dto/update-shipment-item.dto';
 import { ShipmentRepository } from './shipment.repository';
+import { EmailService } from '../email/email.service';
+import { driverAssignedShipmentEmail } from '../email/emails/driverAssignedShipmentEmail';
+import { ClientRepository } from '../client/client.repository';
+import { shipmentMovementEmail } from '../email/emails/shipmentMovementEmail';
+import { SHIPMENT_STATUS } from 'src/Common/constant/enum-shipment-status';
 
 @Injectable()
 export class ShipmentService {
   constructor(
     private shipmentRepository: ShipmentRepository,
+    private emailService: EmailService,
+    private clientRepository: ClientRepository,
   ) {}
   async getCurrentShipments(
     companyId: string,
@@ -69,11 +76,15 @@ export class ShipmentService {
       }
       const clients =
         await this.shipmentRepository.getCountOfClientInShipment(shipmentId);
-      const shipmentItem = await this.shipmentRepository.getCountOfShipmentItemInShipment(companyId,shipmentId)
+      const shipmentItem =
+        await this.shipmentRepository.getCountOfShipmentItemInShipment(
+          companyId,
+          shipmentId,
+        );
       const shipments = {
         ...shipment,
         clients,
-        shipmentItem
+        shipmentItem,
       };
       return shipments;
     } catch (error) {
@@ -161,6 +172,18 @@ export class ShipmentService {
         Shipment,
         companyId,
       );
+      await this.emailService.sendMail(
+        driverAssignedShipmentEmail(
+          shipment.driver?.email!,
+          shipment.driver?.userName!,
+          {
+            id: shipment.id,
+            way: shipment.way,
+            launchDate: shipment.launchDate,
+            shipmentNumber: shipment.shipmentNumber,
+          },
+        ),
+      );
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -216,7 +239,38 @@ export class ShipmentService {
         companyId,
         existingShipment.wayId,
       );
-      // TODO Add Notification Implement
+      const clients = await this.clientRepository.getAllClientInShipment(
+        shipmenId,
+        companyId,
+      );
+      // TEMP NOW WE SEND TO EMAIL ONLY
+      const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
+      if (clients)
+        await Promise.all(
+          clients?.client.map((client) => {
+            const email = client.contactWays.filter(
+              (cw) => cw.contactType == 'email',
+            )[0].text;
+            return this.emailService.sendMail(
+              shipmentMovementEmail(
+                email,
+                client.name,
+                {
+                  id: shipment.id,
+                  shipmentNumber: shipment.shipmentNumber,
+                  status: shipment.isCompleted
+                    ? 'COMPLETE'
+                    : shipment.isPaused
+                      ? 'PAUSED'
+                      : 'CURRENT',
+                  way: { name: shipment.way.name },
+                },
+                client.id,
+                ClientSideDomain!,
+              ),
+            );
+          }),
+        );
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -239,6 +293,7 @@ export class ShipmentService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
+  // TODO
   async pauseShipment(shipmentId: string, companyId: string) {
     try {
       const existingShipment =
