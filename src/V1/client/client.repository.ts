@@ -113,4 +113,21 @@ export class ClientRepository {
       },
     });
   }
+  async getAllClientInShipment(shipmentId: string, companyId: string) {
+    return this.prisma.shipment.findUnique({
+      where: {
+        id: shipmentId,
+        companyId,
+      },
+      select: {
+        client: {
+          select: {
+            id:true,
+            name: true,
+            contactWays: { select: { text: true, contactType: true } },
+          },
+        },
+      },
+    });
+  }
 }

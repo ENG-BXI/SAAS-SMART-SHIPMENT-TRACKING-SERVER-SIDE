@@ -161,7 +161,7 @@ export class SubscriptionRepository {
     const endDate = new Date();
     endDate.setMonth(startMonth + durationByMonth);
 
-    const { newSubscription } = await this.prisma.$transaction(async (tx) => {
+    const { newSubscription,isChange } = await this.prisma.$transaction(async (tx) => {
       const newSubscription = await tx.subscription.update({
         where: {
           companyId,
@@ -190,9 +190,9 @@ export class SubscriptionRepository {
           },
         });
       }
-      return { newSubscription };
+      return { newSubscription, isChange: !!newTypeId };
     });
-    return newSubscription;
+    return {newSubscription,isChange};
   }
   async getSubscription(companyId: string) {
     const subscription = await this.prisma.subscription.findUnique({

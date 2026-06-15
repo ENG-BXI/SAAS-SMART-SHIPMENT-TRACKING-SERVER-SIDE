@@ -2,10 +2,17 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { NoteRepository } from './note.repository';
+import { companyNoteCreatedEmail } from '../email/emails/companyNoteCreatedEmail';
+import { EmailService } from '../email/email.service';
+import { CompanyRepository } from '../company/company.repository';
 
 @Injectable()
 export class NoteService {
-  constructor(private noteRepository: NoteRepository) {}
+  constructor(
+    private noteRepository: NoteRepository,
+    private emailService: EmailService,
+    private companyRepository: CompanyRepository,
+  ) {}
   async getAllNotes(page: number, limit: number, search?: string) {
     try {
       const notes = await this.noteRepository.getAllNotes(
@@ -45,6 +52,17 @@ export class NoteService {
   async createNote(note: CreateNoteDto, companyId: string) {
     try {
       const newNote = await this.noteRepository.createNote(note, companyId);
+      const company = await this.companyRepository.getCompanyById(companyId);
+      const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
+
+      await this.emailService.sendMail(
+        companyNoteCreatedEmail(
+          company?.users[0].email!,
+          company?.name!,
+          newNote.type,
+          ClientSideDomain!,
+        ),
+      );
       return newNote;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
