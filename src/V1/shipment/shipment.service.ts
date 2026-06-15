@@ -9,6 +9,8 @@ import { driverAssignedShipmentEmail } from '../email/emails/driverAssignedShipm
 import { ClientRepository } from '../client/client.repository';
 import { shipmentMovementEmail } from '../email/emails/shipmentMovementEmail';
 import { SHIPMENT_STATUS } from 'src/Common/constant/enum-shipment-status';
+import { shipmentPausedEmail } from '../email/emails/shipmentPausedEmail';
+import { shipmentResumedEmail } from '../email/emails/shipmentResumedEmail';
 
 @Injectable()
 export class ShipmentService {
@@ -293,7 +295,6 @@ export class ShipmentService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
-  // TODO
   async pauseShipment(shipmentId: string, companyId: string) {
     try {
       const existingShipment =
@@ -315,6 +316,32 @@ export class ShipmentService {
         shipmentId,
       );
 
+      const clients = await this.clientRepository.getAllClientInShipment(
+        shipmentId,
+        companyId,
+      );
+      // TEMP NOW WE SEND TO EMAIL ONLY
+      const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
+      if (clients)
+        await Promise.all(
+          clients?.client.map((client) => {
+            const email = client.contactWays.filter(
+              (cw) => cw.contactType == 'email',
+            )[0].text;
+            return this.emailService.sendMail(
+              shipmentPausedEmail(
+                email,
+                client.name,
+                {
+                  id: shipment.id,
+                  shipmentNumber: shipment.shipmentNumber,
+                },
+                client.id,
+                ClientSideDomain!,
+              ),
+            );
+          }),
+        );
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -340,7 +367,32 @@ export class ShipmentService {
         companyId,
         shipmentId,
       );
-
+      const clients = await this.clientRepository.getAllClientInShipment(
+        shipmentId,
+        companyId,
+      );
+      // TEMP NOW WE SEND TO EMAIL ONLY
+      const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
+      if (clients)
+        await Promise.all(
+          clients?.client.map((client) => {
+            const email = client.contactWays.filter(
+              (cw) => cw.contactType == 'email',
+            )[0].text;
+            return this.emailService.sendMail(
+              shipmentResumedEmail(
+                email,
+                client.name,
+                {
+                  id: shipment.id,
+                  shipmentNumber: shipment.shipmentNumber,
+                },
+                client.id,
+                ClientSideDomain!,
+              ),
+            );
+          }),
+        );
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

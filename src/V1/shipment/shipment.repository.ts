@@ -462,7 +462,7 @@ export class ShipmentRepository {
           launchDate: true,
           endDate: true,
           wayId: true,
-          way:{select:{name:true}},
+          way: { select: { name: true } },
           currentPointId: true,
           driverId: true,
           isPaused: true,
@@ -476,12 +476,38 @@ export class ShipmentRepository {
     return await this.prisma.shipment.update({
       where: { id: shipmentId, companyId: companyId },
       data: { isPaused: true },
+      select: {
+        id: true,
+        shipmentNumber: true,
+        launchDate: true,
+        endDate: true,
+        wayId: true,
+        way: { select: { name: true } },
+        currentPointId: true,
+        driverId: true,
+        companyId: true,
+        isPaused: true,
+        isCompleted: true,
+      },
     });
   }
   async resumeShipment(companyId: string, shipmentId: string) {
     return await this.prisma.shipment.update({
       where: { id: shipmentId, companyId: companyId },
       data: { isPaused: false },
+      select: {
+        id: true,
+        shipmentNumber: true,
+        launchDate: true,
+        endDate: true,
+        wayId: true,
+        way: { select: { name: true } },
+        currentPointId: true,
+        driverId: true,
+        companyId: true,
+        isPaused: true,
+        isCompleted: true,
+      },
     });
   }
   async getShipmentWithShipmentItemWithWatWithCompanyWithClientWithDriver(
