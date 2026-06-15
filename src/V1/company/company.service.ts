@@ -5,11 +5,17 @@ import { SubscriptionStatus } from 'generated/prisma/enums';
 import { CompanyRepository } from './company.repository';
 import { hashPassword } from 'src/Common/lib';
 import { SubscriptionRepository } from '../subscription/subscription.repository';
+import { EmailService } from '../email/email.service';
+import { subscriptionEmail } from '../email/emails/subscription.email';
+import { adminCreatedCompanyEmail } from '../email/emails/adminCreatedCompanyEmail';
+import { companyPausedEmail } from '../email/emails/companyPausedEmail';
+import { companyActivatedEmail } from '../email/emails/companyActivatedEmail';
 @Injectable()
 export class CompanyService {
   constructor(
     private companyRepository: CompanyRepository,
     private subscriptionRepository: SubscriptionRepository,
+    private emailService: EmailService,
   ) {}
   async getAllCompany({
     page,
@@ -63,8 +69,12 @@ export class CompanyService {
           HttpStatus.BAD_REQUEST,
         );
       }
+      const email = await this.companyRepository.getEmailForCompany(id);
       const disActiveCompany =
         await this.companyRepository.disActiveCompany(id);
+      await this.emailService.sendMail(
+        companyPausedEmail(email!.users[0].email, company.name),
+      );
       return disActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -89,6 +99,15 @@ export class CompanyService {
         );
       }
       const ActiveCompany = await this.companyRepository.activeCompany(id);
+      const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
+      const email = await this.companyRepository.getEmailForCompany(id);
+      await this.emailService.sendMail(
+        companyActivatedEmail(
+          email!.users[0].email,
+          company.name,
+          ClientSideDomain!,
+        ),
+      );
       return ActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -127,7 +146,11 @@ export class CompanyService {
           hashedPassword,
           subscriptionType.id,
         );
-      return { company, user, subscription };
+      // Send Email
+      const email = await this.emailService.sendMail(
+        subscriptionEmail(createCompanyDto.companyEmail, company.name),
+      );
+      return { company, user, subscription, email };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
@@ -193,7 +216,10 @@ export class CompanyService {
           hashedPassword,
           subscriptionType.durationByMonth,
         );
-
+      const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
+      await this.emailService.sendMail(
+        adminCreatedCompanyEmail(createCompanyDto.companyEmail, company.name,ClientSideDomain!),
+      );
       return { company, user, subscription };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

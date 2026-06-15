@@ -60,6 +60,7 @@ export class SubscriptionController {
     };
   }
   @Post('company/:companyId')
+  // Add and Accept Company when it request subscription
   async addSubscription(
     @Param('companyId', ParseUUIDPipe) companyId: string,
     @Body(new ValidationPipe()) SubscriptionDto: CreateSubscriptionDto,
@@ -142,6 +143,7 @@ export class SubscriptionController {
   }
   @UseGuards(AuthGuard)
   @Patch('company/:subscriptionTypeId')
+    // Change Subscription Type For Company For Company Dashboard For Review a Request
   async editCompanySubscription(
     @Req() req: Request,
     @Param('subscriptionTypeId', ParseUUIDPipe) subscriptionTypeId: string,

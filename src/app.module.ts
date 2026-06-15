@@ -15,7 +15,7 @@ import { StatisticsModule } from './V1/statistics/statistics.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ envFilePath: '.env', isGlobal: true }),
     CompanyModule,
     SubscriptionModule,
     ClientModule,

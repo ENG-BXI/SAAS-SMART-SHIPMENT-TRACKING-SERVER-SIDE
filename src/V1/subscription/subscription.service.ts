@@ -5,12 +5,16 @@ import { UpdateSubscriptionTypeDto } from './dto/UpdateSubscriptionType.dto';
 import { SubscriptionRepository } from './subscription.repository';
 import { CompanyRepository } from '../company/company.repository';
 import { ShipmentItemDto } from '../shipment/dto/create-shipment-item.dto';
+import { EmailService } from '../email/email.service';
+import { subscriptionApprovedEmail } from '../email/emails/subscriptionApprovedEmail';
+import { subscriptionUpgradeApprovedEmail } from '../email/emails/subscriptionUpgradeApprovedEmail';
 
 @Injectable()
 export class SubscriptionService {
   constructor(
     private subscriptionRepository: SubscriptionRepository,
     private companyRepository: CompanyRepository,
+    private emailService: EmailService,
   ) {}
   async getAllSubscription(page: number, search?: string) {
     try {
@@ -48,13 +52,29 @@ export class SubscriptionService {
       if (!company) {
         throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
       }
-      const newSubscription =
+      const { newSubscription, isChange } =
         await this.subscriptionRepository.addSubscriptionForRequestCompany(
           companyId,
           SubscriptionDto,
           subscriptionType.durationByMonth,
           company.subscription?.newTypeId,
         );
+      const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
+      await this.emailService.sendMail(
+        isChange
+          ? subscriptionUpgradeApprovedEmail(
+              company.users[0].email,
+              company.name,
+              ClientSideDomain!,
+              company.subscription?.type.type,
+              subscriptionType.type,
+            )
+          : subscriptionApprovedEmail(
+              company.users[0].email,
+              company.name,
+              ClientSideDomain!,
+            ),
+      );
       return newSubscription;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
