@@ -4,12 +4,15 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { ClientRepository } from './client.repository';
 import { ShipmentRepository } from '../shipment/shipment.repository';
 import { ClientMapper } from './client.mapper';
+import { GatewayService } from '../gateway/gateway.service';
+import { ClientEvent } from './cilent.event';
 
 @Injectable()
 export class ClientService {
   constructor(
     private clientRepository: ClientRepository,
     private shipmentRepository: ShipmentRepository,
+    private gatewayService: GatewayService,
   ) {}
   async getAllClient(
     companyId: string,
@@ -39,6 +42,7 @@ export class ClientService {
         client,
         companyId,
       );
+      this.gatewayService.emit(ClientEvent.ADD, newClient, companyId);
       return { client: newClient, contactWay };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -52,6 +56,7 @@ export class ClientService {
       }
       const { updatedClient, contactWay } =
         await this.clientRepository.editClient(client, clientId);
+      this.gatewayService.emit(ClientEvent.ADD, {client:updatedClient,contactWay}, existClient.companyId);
       return { client: updatedClient, contactWay };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -64,6 +69,7 @@ export class ClientService {
         throw new HttpException('Client not found', HttpStatus.BAD_REQUEST);
       }
       const deletedClient = await this.clientRepository.deleteClient(clientId);
+      this.gatewayService.emit(ClientEvent.ADD, deletedClient, deletedClient.companyId);
       return deletedClient;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
