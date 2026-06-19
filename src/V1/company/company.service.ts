@@ -10,12 +10,15 @@ import { subscriptionEmail } from '../email/emails/subscription.email';
 import { adminCreatedCompanyEmail } from '../email/emails/adminCreatedCompanyEmail';
 import { companyPausedEmail } from '../email/emails/companyPausedEmail';
 import { companyActivatedEmail } from '../email/emails/companyActivatedEmail';
+import { GatewayService } from '../gateway/gateway.service';
+import { CompanyEvent } from './company.event';
 @Injectable()
 export class CompanyService {
   constructor(
     private companyRepository: CompanyRepository,
     private subscriptionRepository: SubscriptionRepository,
     private emailService: EmailService,
+    private gatewayService: GatewayService,
   ) {}
   async getAllCompany({
     page,
@@ -75,6 +78,7 @@ export class CompanyService {
       await this.emailService.sendMail(
         companyPausedEmail(email!.users[0].email, company.name),
       );
+      this.gatewayService.emit(CompanyEvent.PAUSE, company);
       return disActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -108,6 +112,7 @@ export class CompanyService {
           ClientSideDomain!,
         ),
       );
+      this.gatewayService.emit(CompanyEvent.RESUME, company);
       return ActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -150,6 +155,8 @@ export class CompanyService {
       const email = await this.emailService.sendMail(
         subscriptionEmail(createCompanyDto.companyEmail, company.name),
       );
+            this.gatewayService.emit(CompanyEvent.REQUEST, company);
+
       return { company, user, subscription, email };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -218,8 +225,14 @@ export class CompanyService {
         );
       const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
       await this.emailService.sendMail(
-        adminCreatedCompanyEmail(createCompanyDto.companyEmail, company.name,ClientSideDomain!),
+        adminCreatedCompanyEmail(
+          createCompanyDto.companyEmail,
+          company.name,
+          ClientSideDomain!,
+        ),
       );
+      // TODO improve this
+      this.gatewayService.emit(CompanyEvent.ADD, company);
       return { company, user, subscription };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -277,6 +290,8 @@ export class CompanyService {
           existingCompany.subscription?.id,
           isChangeSubscription,
         );
+      // TODO
+      this.gatewayService.emit(CompanyEvent.EDIT, company);
       return { company, user, subscription };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -291,6 +306,7 @@ export class CompanyService {
         throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
       }
       const company = await this.companyRepository.deleteCompany(id);
+      this.gatewayService.emit(CompanyEvent.DELETE, company);
       return company;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
