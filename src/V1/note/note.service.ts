@@ -5,6 +5,8 @@ import { NoteRepository } from './note.repository';
 import { companyNoteCreatedEmail } from '../email/emails/companyNoteCreatedEmail';
 import { EmailService } from '../email/email.service';
 import { CompanyRepository } from '../company/company.repository';
+import { GatewayService } from '../gateway/gateway.service';
+import { NoteEvent } from './note.event';
 
 @Injectable()
 export class NoteService {
@@ -12,6 +14,7 @@ export class NoteService {
     private noteRepository: NoteRepository,
     private emailService: EmailService,
     private companyRepository: CompanyRepository,
+    private gatewayService: GatewayService,
   ) {}
   async getAllNotes(page: number, limit: number, search?: string) {
     try {
@@ -63,6 +66,7 @@ export class NoteService {
           ClientSideDomain!,
         ),
       );
+      this.gatewayService.emit(NoteEvent.ADD, newNote, companyId);
       return newNote;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -83,6 +87,7 @@ export class NoteService {
         note,
         noteId,
       );
+      this.gatewayService.emit(NoteEvent.EDIT, updatedNote, companyId);
       return updatedNote;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -102,6 +107,7 @@ export class NoteService {
         noteId,
         companyId,
       );
+      this.gatewayService.emit(NoteEvent.ADD, deletedNote, companyId);
       return deletedNote;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
