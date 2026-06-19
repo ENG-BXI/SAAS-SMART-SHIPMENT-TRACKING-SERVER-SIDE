@@ -65,8 +65,12 @@ export class WayRepository {
       await tx.point.createMany({
         data: Points,
       });
-      return newWay;
+      return await tx.way.findFirstOrThrow({
+        where: { id: newWay.id, companyId },
+        include: { points: true },
+      });
     });
+    return newWay;
   }
   async getWayById(wayId: string, companyId: string) {
     const way = await this.prisma.way.findUnique({
@@ -95,7 +99,10 @@ export class WayRepository {
           data: Points,
         });
       }
-      return updatedWay;
+      return await tx.way.findFirstOrThrow({
+        where: { id: wayId },
+        include:{points:true}
+      })
     });
     return updatedWay;
   }

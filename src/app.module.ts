@@ -12,6 +12,7 @@ import { NoteModule } from './V1/note/note.module';
 import { ShipmentModule } from './V1/shipment/shipment.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StatisticsModule } from './V1/statistics/statistics.module';
+import { GatewayModule } from './V1/gateway/gateway.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { StatisticsModule } from './V1/statistics/statistics.module';
     ShipmentModule,
     PrismaModule,
     StatisticsModule,
+    GatewayModule
   ],
   controllers: [AppController],
   providers: [AppService],
