@@ -6,11 +6,14 @@ import { UserMapper } from './user.mapper';
 import { hashPassword } from 'src/Common/lib';
 import { EmailService } from '../email/email.service';
 import { newUserCreatedEmail } from '../email/emails/newUserCreatedEmail';
+import { GatewayService } from '../gateway/gateway.service';
+import { UserEvent } from './user.event';
 @Injectable()
 export class UserService {
   constructor(
     private userRepository: UserRepository,
     private emailService: EmailService,
+    private gatewayService: GatewayService,
   ) {}
   async getAllUsers(
     companyId: string,
@@ -65,6 +68,7 @@ export class UserService {
           ClientSideDomain!,
         ),
       );
+      this.gatewayService.emit(UserEvent.ADD, newUser, companyId);
       return newUser;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -103,6 +107,7 @@ export class UserService {
         userName: user.userName,
         role: userDto.role,
       };
+      this.gatewayService.emit(UserEvent.EDIT, updatedUser, companyId);
       return updatedUser;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -119,6 +124,7 @@ export class UserService {
         throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
       }
       const user = await this.userRepository.deleteUser(companyId, userId);
+      this.gatewayService.emit(UserEvent.DELETE, user, companyId);
       return user;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
