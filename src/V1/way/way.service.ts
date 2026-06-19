@@ -2,11 +2,14 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateWayDto } from './dto/create-way.dto';
 import { UpdateWayDto } from './dto/update-way.dto';
 import { WayRepository } from './way.repository';
+import { GatewayService } from '../gateway/gateway.service';
+import { WayEvent } from './way.event';
 
 @Injectable()
 export class WayService {
   constructor(
     private wayRepository: WayRepository,
+    private gatewayService: GatewayService,
   ) {}
   async getAllWays(
     companyId: string,
@@ -27,6 +30,7 @@ export class WayService {
   async createWay(way: CreateWayDto, companyId: string) {
     try {
       const newWay = await this.wayRepository.createWay(way, companyId);
+      this.gatewayService.emit(WayEvent.ADD, newWay, companyId);
       return newWay;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -40,6 +44,7 @@ export class WayService {
         throw new HttpException('Way not found', HttpStatus.BAD_REQUEST);
       }
       const updatedWay = await this.wayRepository.updateWay(way, wayId);
+      this.gatewayService.emit(WayEvent.EDIT, updatedWay, companyId);
       return { updatedWay };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -53,6 +58,8 @@ export class WayService {
         throw new HttpException('Way not found', HttpStatus.BAD_REQUEST);
       }
       const deletedWay = await this.wayRepository.deleteWay(wayId, companyId);
+      this.gatewayService.emit(WayEvent.DELETE, deletedWay, companyId);
+
       return deletedWay;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
