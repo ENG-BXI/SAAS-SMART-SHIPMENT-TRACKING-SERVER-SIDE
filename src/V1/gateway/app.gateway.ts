@@ -4,9 +4,6 @@ import {
   MessageBody,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { GatewayService } from './gateway.service';
-import { CreateGatewayDto } from './dto/create-gateway.dto';
-import { UpdateGatewayDto } from './dto/update-gateway.dto';
 import { Server } from 'socket.io';
 import { OnModuleInit } from '@nestjs/common';
 @WebSocketGateway({
