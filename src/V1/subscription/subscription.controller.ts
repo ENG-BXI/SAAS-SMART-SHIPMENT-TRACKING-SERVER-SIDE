@@ -65,10 +65,11 @@ export class SubscriptionController {
     @Param('companyId', ParseUUIDPipe) companyId: string,
     @Body(new ValidationPipe()) SubscriptionDto: CreateSubscriptionDto,
   ) {
-    const newSubscription = await this.subscriptionService.addSubscription(
-      companyId,
-      SubscriptionDto,
-    );
+    const newSubscription =
+      await this.subscriptionService.AcceptSubscriptionFromRequestCompany(
+        companyId,
+        SubscriptionDto,
+      );
     return {
       data: newSubscription,
       message: 'Add Subscription successfully',
@@ -143,7 +144,7 @@ export class SubscriptionController {
   }
   @UseGuards(AuthGuard)
   @Patch('company/:subscriptionTypeId')
-    // Change Subscription Type For Company For Company Dashboard For Review a Request
+  // Change Subscription Type For Company For Company Dashboard For Review a Request
   async editCompanySubscription(
     @Req() req: Request,
     @Param('subscriptionTypeId', ParseUUIDPipe) subscriptionTypeId: string,

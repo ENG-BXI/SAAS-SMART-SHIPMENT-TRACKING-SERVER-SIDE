@@ -8,6 +8,8 @@ import { ShipmentItemDto } from '../shipment/dto/create-shipment-item.dto';
 import { EmailService } from '../email/email.service';
 import { subscriptionApprovedEmail } from '../email/emails/subscriptionApprovedEmail';
 import { subscriptionUpgradeApprovedEmail } from '../email/emails/subscriptionUpgradeApprovedEmail';
+import { GatewayService } from '../gateway/gateway.service';
+import { SubscriptionEvent } from './subscription.event';
 
 @Injectable()
 export class SubscriptionService {
@@ -15,6 +17,7 @@ export class SubscriptionService {
     private subscriptionRepository: SubscriptionRepository,
     private companyRepository: CompanyRepository,
     private emailService: EmailService,
+    private gatewayService: GatewayService,
   ) {}
   async getAllSubscription(page: number, search?: string) {
     try {
@@ -31,7 +34,7 @@ export class SubscriptionService {
     }
   }
   // Add and Accept Company when it request subscription
-  async addSubscription(
+  async AcceptSubscriptionFromRequestCompany(
     companyId: string,
     SubscriptionDto: CreateSubscriptionDto,
   ) {
@@ -53,7 +56,7 @@ export class SubscriptionService {
         throw new HttpException('Company not found', HttpStatus.BAD_REQUEST);
       }
       const { newSubscription, isChange } =
-        await this.subscriptionRepository.addSubscriptionForRequestCompany(
+        await this.subscriptionRepository.AcceptSubscriptionForRequestCompany(
           companyId,
           SubscriptionDto,
           subscriptionType.durationByMonth,
@@ -74,6 +77,10 @@ export class SubscriptionService {
               company.name,
               ClientSideDomain!,
             ),
+      );
+      this.gatewayService.emit(
+        SubscriptionEvent.ACCEPT_COMPANY,
+        newSubscription,
       );
       return newSubscription;
     } catch (error) {
@@ -112,10 +119,9 @@ export class SubscriptionService {
         companyId,
         subscriptionTypeId,
       );
-
+    this.gatewayService.emit(SubscriptionEvent.EDIT, editedSubscription);
     return editedSubscription;
   }
-
   async getSubscriptionType() {
     const subscriptionType =
       await this.subscriptionRepository.getAllSubscriptionType();
@@ -139,6 +145,8 @@ export class SubscriptionService {
         await this.subscriptionRepository.createSubscriptionType(
           createSubscriptionTypeDto,
         );
+      this.gatewayService.emit(SubscriptionEvent.ADD_TYPE, SubscriptionType);
+
       return SubscriptionType;
     } catch (error) {
       if (error instanceof Error)
@@ -176,6 +184,11 @@ export class SubscriptionService {
           id,
           updateSubscriptionTypeDto,
         );
+      this.gatewayService.emit(
+        SubscriptionEvent.EDIT_TYPE,
+        updatedSubscriptionType,
+      );
+
       return updatedSubscriptionType;
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -200,6 +213,10 @@ export class SubscriptionService {
 
       const deletedSubscriptionType =
         await this.subscriptionRepository.deleteSubscriptionType(id);
+      this.gatewayService.emit(
+        SubscriptionEvent.DELETE_TYPE,
+        deletedSubscriptionType,
+      );
       return deletedSubscriptionType;
     } catch (error) {
       if (error instanceof HttpException) throw error;

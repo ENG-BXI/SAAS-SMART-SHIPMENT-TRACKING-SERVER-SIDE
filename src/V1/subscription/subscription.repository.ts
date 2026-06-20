@@ -150,7 +150,7 @@ export class SubscriptionRepository {
     });
     return deletedSubscriptionType;
   }
-  async addSubscriptionForRequestCompany(
+  async AcceptSubscriptionForRequestCompany(
     companyId: string,
     SubscriptionDto: CreateSubscriptionDto,
     durationByMonth: number,
@@ -161,38 +161,40 @@ export class SubscriptionRepository {
     const endDate = new Date();
     endDate.setMonth(startMonth + durationByMonth);
 
-    const { newSubscription,isChange } = await this.prisma.$transaction(async (tx) => {
-      const newSubscription = await tx.subscription.update({
-        where: {
-          companyId,
-        },
-        data: {
-          type: {
-            connect: {
-              id: SubscriptionDto.type,
-            },
+    const { newSubscription, isChange } = await this.prisma.$transaction(
+      async (tx) => {
+        const newSubscription = await tx.subscription.update({
+          where: {
+            companyId,
           },
-          startDate,
-          endDate,
-          status: SubscriptionStatus.active,
-        },
-      });
-      if (newTypeId) {
-        await tx.company.update({
-          where: { id: companyId },
           data: {
-            subscription: {
-              update: {
-                newType: { disconnect: true },
-                newTypeId: undefined,
+            type: {
+              connect: {
+                id: SubscriptionDto.type,
               },
             },
+            startDate,
+            endDate,
+            status: SubscriptionStatus.active,
           },
         });
-      }
-      return { newSubscription, isChange: !!newTypeId };
-    });
-    return {newSubscription,isChange};
+        if (newTypeId) {
+          await tx.company.update({
+            where: { id: companyId },
+            data: {
+              subscription: {
+                update: {
+                  newType: { disconnect: true },
+                  newTypeId: undefined,
+                },
+              },
+            },
+          });
+        }
+        return { newSubscription, isChange: !!newTypeId };
+      },
+    );
+    return { newSubscription, isChange };
   }
   async getSubscription(companyId: string) {
     const subscription = await this.prisma.subscription.findUnique({

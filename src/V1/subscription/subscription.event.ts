@@ -1,4 +1,6 @@
 export const SubscriptionEvent = {
+    ACCEPT_COMPANY:'subscription:accept',
+    CHANGE_SUBSCRIPTION:'subscription:change',
     ADD:'subscription:add',
     EDIT:'subscription:add',
     DELETE:'subscription:add',

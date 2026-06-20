@@ -11,6 +11,9 @@ import { shipmentMovementEmail } from '../email/emails/shipmentMovementEmail';
 import { SHIPMENT_STATUS } from 'src/Common/constant/enum-shipment-status';
 import { shipmentPausedEmail } from '../email/emails/shipmentPausedEmail';
 import { shipmentResumedEmail } from '../email/emails/shipmentResumedEmail';
+import { GatewayService } from '../gateway/gateway.service';
+import { ShipmentEvent } from './shipment.event';
+import { ClientEvent } from '../client/cilent.event';
 
 @Injectable()
 export class ShipmentService {
@@ -18,6 +21,7 @@ export class ShipmentService {
     private shipmentRepository: ShipmentRepository,
     private emailService: EmailService,
     private clientRepository: ClientRepository,
+    private gatewayService: GatewayService,
   ) {}
   async getCurrentShipments(
     companyId: string,
@@ -132,6 +136,16 @@ export class ShipmentService {
           shipmentId,
           createShipmenItem,
         );
+      this.gatewayService.emit(
+        ShipmentEvent.ADD_ITEM,
+        shipmentItem,
+        client.companyId,
+      );
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipmentItem,
+        client.companyId,
+      );
       return { client, shipmentItem };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -140,18 +154,29 @@ export class ShipmentService {
   async updateShipmentItem(
     shipmentItemId: string,
     updateShipmenItem: UpdateShipmentItemDto,
+    companyId: string,
   ) {
     try {
       const shipmentItem = await this.shipmentRepository.editShipmentItem(
         shipmentItemId,
         updateShipmenItem,
       );
+      this.gatewayService.emit(
+        ShipmentEvent.EDIT_ITEM,
+        shipmentItem,
+        companyId,
+      );
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipmentItem,
+        companyId,
+      );
       return shipmentItem;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
-  async deleteShipmentItem(shipmentItemId: string) {
+  async deleteShipmentItem(shipmentItemId: string, companyId: string) {
     try {
       const existShipmentItem =
         await this.shipmentRepository.isShipmentItemExist(shipmentItemId);
@@ -163,6 +188,16 @@ export class ShipmentService {
       }
       const shipmentItem =
         await this.shipmentRepository.deleteShipmentItem(shipmentItemId);
+      this.gatewayService.emit(
+        ShipmentEvent.DELETE_ITEM,
+        shipmentItem,
+        companyId,
+      );
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipmentItem,
+        companyId,
+      );
       return shipmentItem;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -186,6 +221,7 @@ export class ShipmentService {
           },
         ),
       );
+      this.gatewayService.emit(ShipmentEvent.ADD, shipment, companyId);
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -207,6 +243,12 @@ export class ShipmentService {
         shipmenId,
         Shipment,
       );
+      this.gatewayService.emit(ShipmentEvent.EDIT, shipment, companyId);
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipment,
+        companyId,
+      );
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -222,6 +264,12 @@ export class ShipmentService {
       const shipment = await this.shipmentRepository.deleteShipment(
         companyId,
         shipmenId,
+      );
+      this.gatewayService.emit(ShipmentEvent.DELETE, shipment, companyId);
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipment,
+        companyId,
       );
       return shipment;
     } catch (error) {
@@ -273,6 +321,12 @@ export class ShipmentService {
             );
           }),
         );
+      this.gatewayService.emit(ShipmentEvent.MOVEMENT, shipment, companyId);
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipment,
+        companyId,
+      );
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -289,6 +343,12 @@ export class ShipmentService {
         shipmenId,
         companyId,
         existingShipment.wayId,
+      );
+      this.gatewayService.emit(ShipmentEvent.MOVEMENT, shipment, companyId);
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipment,
+        companyId,
       );
       return shipment;
     } catch (error) {
@@ -342,6 +402,12 @@ export class ShipmentService {
             );
           }),
         );
+      this.gatewayService.emit(ShipmentEvent.PAUSE, shipment, companyId);
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipment,
+        companyId,
+      );
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -393,6 +459,12 @@ export class ShipmentService {
             );
           }),
         );
+      this.gatewayService.emit(ShipmentEvent.RESUME, shipment, companyId);
+      this.gatewayService.emit(
+        ClientEvent.SHIPMENT_DETAILS_FOR_CLIENT,
+        shipment,
+        companyId,
+      );
       return shipment;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

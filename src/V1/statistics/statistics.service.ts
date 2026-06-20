@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { StatisticsRepository } from './statistics.repository';
 import { StatisticsMapper } from './statistics.mapper';
+import { StatisticsEvent } from './statistics.event';
+import { GatewayService } from '../gateway/gateway.service';
 
 @Injectable()
 export class StatisticsService {
-  constructor(private statisticsRepository: StatisticsRepository) {}
+  constructor(
+    private statisticsRepository: StatisticsRepository,
+    private gatewayService: GatewayService,
+  ) {}
   /*
     numberOfShipments,
     numberOfCurrentShipments,
@@ -100,9 +105,12 @@ export class StatisticsService {
           await this.statisticsRepository.IncreaseNumberOfVisit(
             isNumberOfVisitExist.value,
           );
+        this.gatewayService.emit(StatisticsEvent.ADMIN, {});
+
         return addedVisit;
       } else {
         const addedVisit = await this.statisticsRepository.InitialVisitTable();
+        this.gatewayService.emit(StatisticsEvent.ADMIN, {});
         return addedVisit;
       }
     } catch (error) {}
