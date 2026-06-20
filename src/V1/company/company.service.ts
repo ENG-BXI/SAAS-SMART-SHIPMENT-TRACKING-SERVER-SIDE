@@ -12,6 +12,7 @@ import { companyPausedEmail } from '../email/emails/companyPausedEmail';
 import { companyActivatedEmail } from '../email/emails/companyActivatedEmail';
 import { GatewayService } from '../gateway/gateway.service';
 import { CompanyEvent } from './company.event';
+import { StatisticsEvent } from '../statistics/statistics.event';
 @Injectable()
 export class CompanyService {
   constructor(
@@ -79,6 +80,7 @@ export class CompanyService {
         companyPausedEmail(email!.users[0].email, company.name),
       );
       this.gatewayService.emit(CompanyEvent.PAUSE, company);
+      this.gatewayService.emit(StatisticsEvent.ADMIN, {});
       return disActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -113,6 +115,7 @@ export class CompanyService {
         ),
       );
       this.gatewayService.emit(CompanyEvent.RESUME, company);
+      this.gatewayService.emit(StatisticsEvent.ADMIN, {});
       return ActiveCompany;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -155,8 +158,8 @@ export class CompanyService {
       const email = await this.emailService.sendMail(
         subscriptionEmail(createCompanyDto.companyEmail, company.name),
       );
-            this.gatewayService.emit(CompanyEvent.REQUEST, company);
-
+      this.gatewayService.emit(CompanyEvent.REQUEST, company);
+      this.gatewayService.emit(StatisticsEvent.ADMIN, {});
       return { company, user, subscription, email };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -233,6 +236,7 @@ export class CompanyService {
       );
       // TODO improve this
       this.gatewayService.emit(CompanyEvent.ADD, company);
+      this.gatewayService.emit(StatisticsEvent.ADMIN, {});
       return { company, user, subscription };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -307,6 +311,7 @@ export class CompanyService {
       }
       const company = await this.companyRepository.deleteCompany(id);
       this.gatewayService.emit(CompanyEvent.DELETE, company);
+      this.gatewayService.emit(StatisticsEvent.ADMIN, {});
       return company;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

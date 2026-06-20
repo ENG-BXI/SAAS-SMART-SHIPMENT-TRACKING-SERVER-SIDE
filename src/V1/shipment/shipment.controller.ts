@@ -210,10 +210,11 @@ export class ShipmentController {
     @Param('id') shipmentId: string,
     @Body(new ValidationPipe()) createShipmenItem: CreateShipmentItemDto,
   ) {
-    const { client, shipmentItem } = await this.shipmentService.addClientAndShipmentItem(
-      shipmentId,
-      createShipmenItem,
-    );
+    const { client, shipmentItem } =
+      await this.shipmentService.addClientAndShipmentItem(
+        shipmentId,
+        createShipmenItem,
+      );
     return {
       data: { client, shipmentItem },
       message: 'Client and shipment item added successfully',
@@ -224,10 +225,15 @@ export class ShipmentController {
   async updateShipmentItem(
     @Param('id') shipmentItemId: string,
     @Body(new ValidationPipe()) updateShipmenItem: UpdateShipmentItemDto,
+    @Req() req: Request,
   ) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
     const shipmentItem = await this.shipmentService.updateShipmentItem(
       shipmentItemId,
       updateShipmenItem,
+      req.user.companyId,
     );
     return {
       data: shipmentItem,
@@ -236,9 +242,17 @@ export class ShipmentController {
     };
   }
   @Delete(':id/delete-shipment-item')
-  async deleteShipmentItem(@Param('id') shipmentItemId: string) {
-    const shipmentItem =
-      await this.shipmentService.deleteShipmentItem(shipmentItemId);
+  async deleteShipmentItem(
+    @Param('id') shipmentItemId: string,
+    @Req() req: Request,
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const shipmentItem = await this.shipmentService.deleteShipmentItem(
+      shipmentItemId,
+      req.user.companyId,
+    );
     return {
       data: shipmentItem,
       message: 'Client and shipment item deleted successfully',

@@ -6,6 +6,7 @@ import { ShipmentRepository } from '../shipment/shipment.repository';
 import { ClientMapper } from './client.mapper';
 import { GatewayService } from '../gateway/gateway.service';
 import { ClientEvent } from './cilent.event';
+import { StatisticsEvent } from '../statistics/statistics.event';
 
 @Injectable()
 export class ClientService {
@@ -43,6 +44,8 @@ export class ClientService {
         companyId,
       );
       this.gatewayService.emit(ClientEvent.ADD, newClient, companyId);
+      this.gatewayService.emit(StatisticsEvent.MANAGER, {}, companyId);
+
       return { client: newClient, contactWay };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -56,7 +59,11 @@ export class ClientService {
       }
       const { updatedClient, contactWay } =
         await this.clientRepository.editClient(client, clientId);
-      this.gatewayService.emit(ClientEvent.ADD, {client:updatedClient,contactWay}, existClient.companyId);
+      this.gatewayService.emit(
+        ClientEvent.ADD,
+        { client: updatedClient, contactWay },
+        existClient.companyId,
+      );
       return { client: updatedClient, contactWay };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -69,7 +76,12 @@ export class ClientService {
         throw new HttpException('Client not found', HttpStatus.BAD_REQUEST);
       }
       const deletedClient = await this.clientRepository.deleteClient(clientId);
-      this.gatewayService.emit(ClientEvent.ADD, deletedClient, deletedClient.companyId);
+      this.gatewayService.emit(
+        ClientEvent.ADD,
+        deletedClient,
+        deletedClient.companyId,
+      );
+      this.gatewayService.emit(StatisticsEvent.MANAGER, {}, deletedClient.companyId);
       return deletedClient;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

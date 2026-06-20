@@ -7,6 +7,7 @@ import { EmailService } from '../email/email.service';
 import { CompanyRepository } from '../company/company.repository';
 import { GatewayService } from '../gateway/gateway.service';
 import { NoteEvent } from './note.event';
+import { StatisticsEvent } from '../statistics/statistics.event';
 
 @Injectable()
 export class NoteService {
@@ -67,6 +68,8 @@ export class NoteService {
         ),
       );
       this.gatewayService.emit(NoteEvent.ADD, newNote, companyId);
+      this.gatewayService.emit(StatisticsEvent.ADMIN, {});
+
       return newNote;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -108,6 +111,7 @@ export class NoteService {
         companyId,
       );
       this.gatewayService.emit(NoteEvent.ADD, deletedNote, companyId);
+      this.gatewayService.emit(StatisticsEvent.ADMIN, {});
       return deletedNote;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);

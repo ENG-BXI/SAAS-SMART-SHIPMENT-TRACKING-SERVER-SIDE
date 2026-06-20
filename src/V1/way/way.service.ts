@@ -4,6 +4,7 @@ import { UpdateWayDto } from './dto/update-way.dto';
 import { WayRepository } from './way.repository';
 import { GatewayService } from '../gateway/gateway.service';
 import { WayEvent } from './way.event';
+import { StatisticsEvent } from '../statistics/statistics.event';
 
 @Injectable()
 export class WayService {
@@ -31,6 +32,7 @@ export class WayService {
     try {
       const newWay = await this.wayRepository.createWay(way, companyId);
       this.gatewayService.emit(WayEvent.ADD, newWay, companyId);
+      this.gatewayService.emit(StatisticsEvent.MANAGER, {}, companyId);
       return newWay;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
@@ -59,7 +61,7 @@ export class WayService {
       }
       const deletedWay = await this.wayRepository.deleteWay(wayId, companyId);
       this.gatewayService.emit(WayEvent.DELETE, deletedWay, companyId);
-
+      this.gatewayService.emit(StatisticsEvent.MANAGER, {}, companyId);
       return deletedWay;
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
