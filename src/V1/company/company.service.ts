@@ -76,7 +76,7 @@ export class CompanyService {
       const email = await this.companyRepository.getEmailForCompany(id);
       const disActiveCompany =
         await this.companyRepository.disActiveCompany(id);
-      await this.emailService.sendMail(
+      this.emailService.sendMail(
         companyPausedEmail(email!.users[0].email, company.name),
       );
       this.gatewayService.emit(CompanyEvent.PAUSE, company);
@@ -107,7 +107,7 @@ export class CompanyService {
       const ActiveCompany = await this.companyRepository.activeCompany(id);
       const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
       const email = await this.companyRepository.getEmailForCompany(id);
-      await this.emailService.sendMail(
+      this.emailService.sendMail(
         companyActivatedEmail(
           email!.users[0].email,
           company.name,
@@ -155,12 +155,12 @@ export class CompanyService {
           subscriptionType.id,
         );
       // Send Email
-      const email = await this.emailService.sendMail(
+      this.emailService.sendMail(
         subscriptionEmail(createCompanyDto.companyEmail, company.name),
       );
       this.gatewayService.emit(CompanyEvent.REQUEST, company);
       this.gatewayService.emit(StatisticsEvent.ADMIN, {});
-      return { company, user, subscription, email };
+      return { company, user, subscription };
     } catch (error) {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }

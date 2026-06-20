@@ -59,7 +59,7 @@ export class NoteService {
       const company = await this.companyRepository.getCompanyById(companyId);
       const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
 
-      await this.emailService.sendMail(
+       this.emailService.sendMail(
         companyNoteCreatedEmail(
           company?.users[0].email!,
           company?.name!,

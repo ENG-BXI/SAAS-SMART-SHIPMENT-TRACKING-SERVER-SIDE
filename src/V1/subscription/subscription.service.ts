@@ -4,7 +4,6 @@ import { CreateSubscriptionTypeDto } from './dto/CreateSubscriptionType.dto';
 import { UpdateSubscriptionTypeDto } from './dto/UpdateSubscriptionType.dto';
 import { SubscriptionRepository } from './subscription.repository';
 import { CompanyRepository } from '../company/company.repository';
-import { ShipmentItemDto } from '../shipment/dto/create-shipment-item.dto';
 import { EmailService } from '../email/email.service';
 import { subscriptionApprovedEmail } from '../email/emails/subscriptionApprovedEmail';
 import { subscriptionUpgradeApprovedEmail } from '../email/emails/subscriptionUpgradeApprovedEmail';
@@ -63,7 +62,7 @@ export class SubscriptionService {
           company.subscription?.newTypeId,
         );
       const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
-      await this.emailService.sendMail(
+      this.emailService.sendMail(
         isChange
           ? subscriptionUpgradeApprovedEmail(
               company.users[0].email,

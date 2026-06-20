@@ -209,7 +209,7 @@ export class ShipmentService {
         Shipment,
         companyId,
       );
-      await this.emailService.sendMail(
+      this.emailService.sendMail(
         driverAssignedShipmentEmail(
           shipment.driver?.email!,
           shipment.driver?.userName!,

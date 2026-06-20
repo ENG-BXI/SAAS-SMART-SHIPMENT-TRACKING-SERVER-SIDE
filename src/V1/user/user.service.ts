@@ -60,7 +60,7 @@ export class UserService {
         role: userDto.role,
       };
       const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
-      await this.emailService.sendMail(
+      this.emailService.sendMail(
         newUserCreatedEmail(
           user.email,
           user.userName.toUpperCase(),
