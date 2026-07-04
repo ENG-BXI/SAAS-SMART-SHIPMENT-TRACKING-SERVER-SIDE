@@ -1,3 +1,5 @@
+import { Decimal } from "@prisma/client/runtime/index-browser";
+
 export interface IShipmentDetails {
   shipmentNumber: string;
   launchDate: Date;
@@ -9,6 +11,8 @@ export interface IShipmentDetails {
     points: {
       id: string;
       name: string;
+      lat: Decimal | null;
+      lng: Decimal | null;
     }[];
   };
   driver: {

@@ -22,7 +22,7 @@ export class AuthRepository {
           select: {
             subscription: {
               select: {
-                status: true,
+                status: true,endDate:true
               },
             },
           },

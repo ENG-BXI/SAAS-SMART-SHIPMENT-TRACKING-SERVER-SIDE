@@ -4,6 +4,7 @@ import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { CONFIG } from 'src/Config';
 import { AuthRepository } from './auth.repository';
+import { SubscriptionRepository } from '../subscription/subscription.repository';
 
 @Module({
   imports: [
@@ -14,6 +15,6 @@ import { AuthRepository } from './auth.repository';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthRepository],
+  providers: [AuthService, AuthRepository, SubscriptionRepository],
 })
 export class AuthModule {}

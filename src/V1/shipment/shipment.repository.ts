@@ -533,6 +533,8 @@ export class ShipmentRepository {
               select: {
                 id: true,
                 name: true,
+                lat: true,
+                lng: true,
               },
               orderBy: { order: 'asc' },
             },

@@ -27,8 +27,11 @@ export class WayRepository {
         name: true,
         points: {
           select: {
+            id: true,
             name: true,
             order: true,
+            lat: true,
+            lng: true,
           },
           orderBy: {
             order: 'asc',
@@ -58,8 +61,7 @@ export class WayRepository {
         },
       });
       const Points = way.points.map((point) => ({
-        name: point.name,
-        order: point.order,
+        ...point,
         wayId: newWay.id,
       }));
       await tx.point.createMany({
@@ -78,33 +80,60 @@ export class WayRepository {
     });
     return way;
   }
-  async updateWay(way: UpdateWayDto, wayId: string) {
-    const updatedWay = await this.prisma.$transaction(async (tx) => {
+  async updateWay(way: UpdateWayDto, wayId: string, companyId: string) {
+    return await this.prisma.$transaction(async (tx) => {
       const updatedWay = await tx.way.update({
-        where: { id: wayId },
-        data: {
-          name: way.name,
-        },
+        where: { id: wayId, companyId },
+        data: { name: way.name },
+        select: { id: true, points: { select: { id: true } } },
       });
-      const Points = way.points?.map((point) => ({
-        name: point.name,
-        order: point.order,
-        wayId: updatedWay.id,
-      }));
-      if (Points) {
-        await tx.point.deleteMany({
-          where: { wayId: updatedWay.id },
-        });
-        await tx.point.createMany({
-          data: Points,
-        });
+      if (way.points) {
+        const existingIds = new Set(updatedWay.points.map((p) => p.id));
+        const incomingIds = new Set(
+          way.points.filter((p) => p.id).map((p) => p.id as string),
+        );
+
+        const idsToDelete = [...existingIds].filter(
+          (id) => !incomingIds.has(id),
+        );
+
+        if (idsToDelete.length) {
+          await tx.point.deleteMany({
+            where: { id: { in: idsToDelete } },
+          });
+        }
+
+        await Promise.all(
+          way.points.map((point) => {
+            if (point.id && existingIds.has(point.id)) {
+              return tx.point.update({
+                where: { id: point.id },
+                data: {
+                  name: point.name,
+                  order: point.order,
+                  lat: point.lat,
+                  lng: point.lng,
+                },
+              });
+            }
+            return tx.point.create({
+              data: {
+                name: point.name,
+                order: point.order,
+                lat: point.lat,
+                lng: point.lng,
+                wayId: updatedWay.id,
+              },
+            });
+          }),
+        );
       }
-      return await tx.way.findFirstOrThrow({
+
+      return tx.way.findFirstOrThrow({
         where: { id: wayId },
-        include:{points:true}
-      })
+        include: { points: true },
+      });
     });
-    return updatedWay;
   }
   async deleteWay(wayId: string, companyId: string) {
     const deletedWay = await this.prisma.way.delete({

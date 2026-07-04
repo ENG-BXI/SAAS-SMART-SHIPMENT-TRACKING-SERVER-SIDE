@@ -129,6 +129,8 @@ model point {
   wayId     String
   way       way        @relation(fields: [wayId], references: [id], onDelete: Cascade)
   shipments shipment[]
+  lat       Decimal?
+  lng       Decimal?
 
   @@unique([wayId, name])
   @@unique([wayId, order])
@@ -160,7 +162,7 @@ model shipment {
   wayId          String
   way            way            @relation(fields: [wayId], references: [id], onDelete: Cascade)
   currentPointId String?
-  currentPoint   point?         @relation(fields: [currentPointId], references: [id], onDelete: Cascade)
+  currentPoint   point?         @relation(fields: [currentPointId], references: [id], onDelete: SetNull)
   driverId       String?
   driver         user?          @relation(fields: [driverId], references: [id], onDelete: Cascade)
   client         client[]

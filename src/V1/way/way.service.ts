@@ -45,7 +45,7 @@ export class WayService {
       if (!existingWay) {
         throw new HttpException('Way not found', HttpStatus.BAD_REQUEST);
       }
-      const updatedWay = await this.wayRepository.updateWay(way, wayId);
+      const updatedWay = await this.wayRepository.updateWay(way, wayId,companyId);
       this.gatewayService.emit(WayEvent.EDIT, updatedWay, companyId);
       return { updatedWay };
     } catch (error) {

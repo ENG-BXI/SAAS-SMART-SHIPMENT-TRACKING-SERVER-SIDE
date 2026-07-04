@@ -29,6 +29,8 @@ export class ClientMapper {
       return {
         name: val.name,
         isCurrent: val.id == shipmentDetails?.currentPointId,
+        lng:val.lng,
+        lat:val.lat,
       };
     });
     const companyEmployee = shipmentDetails?.company.users[0];

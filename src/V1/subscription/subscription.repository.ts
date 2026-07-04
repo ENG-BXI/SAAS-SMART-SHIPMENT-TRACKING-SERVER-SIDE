@@ -247,4 +247,12 @@ export class SubscriptionRepository {
     });
     return SubscriptionType;
   }
+  async expireSubscriptionOfCompany(companyId: string) { 
+    await this.prisma.subscription.update({
+      where:{companyId},
+      data:{
+        status:SubscriptionStatus.expired
+      }
+    })
+  }
 }
