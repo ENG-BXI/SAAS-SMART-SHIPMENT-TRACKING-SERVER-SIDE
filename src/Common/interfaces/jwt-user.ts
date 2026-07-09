@@ -1,5 +1,7 @@
+import { SubscriptionStatus } from 'generated/prisma/enums';
 export interface JwtUser {
-  sub: number;
-  email: string;
+  id: string;
   companyId: string;
+  role: string;
+  status: SubscriptionStatus;
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -18,18 +18,18 @@ export class AuthService {
     const user = await this.authRepository.login(loginDto.email);
     // Check if user exist
     if (!user) {
-      throw new Error('email or password is not correct');
+      throw new UnauthorizedException('email or password is not correct');
     }
-    // TODO : Denied Client Form Dashboard
-    // Denied driver from dashboard
-    if (user.isDriver) throw new Error('email or password is not correct');
+    if (user.isDriver) {
+      throw new UnauthorizedException('email or password is not correct');
+    }
     const isPasswordValid = await bcrypt.compare(
       loginDto.password,
       user.password,
     );
     // Check if password is correct
     if (!isPasswordValid) {
-      throw new Error('email or password is not correct');
+      throw new UnauthorizedException('email or password is not correct');
     }
     let status = user.company?.subscription?.status;
     const date = new Date();
@@ -52,15 +52,56 @@ export class AuthService {
         ? USER_ROLE.MANAGER
         : user.isEmployee
           ? USER_ROLE.EMPLOYEE
-          : user.isDriver
-            ? USER_ROLE.DRIVER
-            : null;
+          : null;
     const payload = {
       id: user.id,
       name: user.userName,
       email: user.email,
       companyId: user.companyId,
       role: role,
+      status,
+    };
+    return this.jwtService.sign(payload);
+  }
+  async loginForDriver(loginDto: LoginDto) {
+    const user = await this.authRepository.login(loginDto.email);
+    // Check if user exist
+    if (!user) {
+      throw new UnauthorizedException('email or password is not correct');
+    }
+    if (!user.isDriver) {
+      throw new UnauthorizedException('email or password is not correct');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.password,
+    );
+    // Check if password is correct
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('email or password is not correct');
+    }
+    let status = user.company?.subscription?.status;
+    const date = new Date();
+    if (
+      user?.company?.subscription?.endDate &&
+      user.company.subscription.endDate < date
+    ) {
+      if (status != 'change')
+        await this.subscriptionRepository.expireSubscriptionOfCompany(
+          user.companyId!,
+        );
+      status = SubscriptionStatus.expired;
+    }
+    if (user.isAdmin) {
+      status = SubscriptionStatus.active;
+    }
+    const payload = {
+      id: user.id,
+      name: user.userName,
+      email: user.email,
+      companyId: user.companyId,
+      role: USER_ROLE.DRIVER,
       status,
     };
     return this.jwtService.sign(payload);

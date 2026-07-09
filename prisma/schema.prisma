@@ -171,6 +171,7 @@ model shipment {
   company        company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isPaused       Boolean        @default(false)
   isCompleted    Boolean        @default(false)
+  createAt       DateTime       @default(now()) 
 
   @@unique([shipmentNumber, companyId])
 }

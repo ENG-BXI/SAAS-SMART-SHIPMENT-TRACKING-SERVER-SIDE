@@ -171,4 +171,23 @@ export class UserRepository {
     });
     return drivers;
   }
+  async getInfoOfDriver(companyId: string, driverId: string) {
+    return await this.prisma.user.findUnique({
+      where: { id: driverId, companyId },
+      select: {
+        userName: true,
+        company: {
+          select: {
+            name: true,
+            users: {
+              select: { email: true, userName: true },
+              where: { isEmployee: true },
+              take: 1,
+              orderBy: { createAt: 'asc' },
+            },
+          },
+        },
+      },
+    });
+  }
 }

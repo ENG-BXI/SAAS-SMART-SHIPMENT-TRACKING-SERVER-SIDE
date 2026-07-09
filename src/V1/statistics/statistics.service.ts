@@ -1,13 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { StatisticsRepository } from './statistics.repository';
 import { StatisticsMapper } from './statistics.mapper';
 import { StatisticsEvent } from './statistics.event';
 import { GatewayService } from '../gateway/gateway.service';
+import { ShipmentRepository } from '../shipment/shipment.repository';
+import { UserRepository } from '../user/user.repository';
 
 @Injectable()
 export class StatisticsService {
   constructor(
     private statisticsRepository: StatisticsRepository,
+    private shipmentRepository: ShipmentRepository,
+    private userRepository: UserRepository,
     private gatewayService: GatewayService,
   ) {}
   /*
@@ -114,5 +118,16 @@ export class StatisticsService {
         return addedVisit;
       }
     } catch (error) {}
+  }
+  async getDriverStatistics(companyId: string, driverId: string) {
+    try {
+      const [user, shipmentDetails] = await Promise.all([
+        this.userRepository.getInfoOfDriver(companyId, driverId),
+        this.shipmentRepository.getShipmentInfoForDriver(driverId),
+      ]);
+      return { ...shipmentDetails, ...user };
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
   }
 }

@@ -17,17 +17,20 @@ export class ShipmentRepository {
     page,
     isCompleted,
     search,
+    driverId,
   }: {
     companyId: string;
     page: number;
     limit: number;
     isCompleted?: boolean;
     search?: string;
+    driverId?: string;
   }) {
     return await this.prisma.shipment.findMany({
       where: {
         AND: [
           { companyId: companyId },
+          driverId ? { driverId } : {},
           { isCompleted },
           search
             ? {
@@ -66,12 +69,14 @@ export class ShipmentRepository {
         id: true,
         shipmentNumber: true,
         launchDate: true,
+        endDate: true,
         isCompleted: true,
         isPaused: true,
         way: {
           select: {
             id: true,
             name: true,
+            points: !!driverId,
           },
         },
         currentPoint: {
@@ -93,15 +98,18 @@ export class ShipmentRepository {
     companyId,
     search,
     isCompleted,
+    driverId,
   }: {
     companyId: string;
     search?: string;
     isCompleted?: boolean;
+    driverId?: string;
   }) {
     return await this.prisma.shipment.count({
       where: {
         AND: [
           { companyId: companyId },
+          driverId ? { driverId } : {},
           { isCompleted },
           search
             ? {
@@ -566,6 +574,23 @@ export class ShipmentRepository {
           select: { userName: true, phoneNumber: true, email: true },
         },
         currentPointId: true,
+      },
+    });
+  }
+  async getShipmentInfoForDriver(driverId: string) {
+    return await this.prisma.shipment.findFirst({
+      where: {
+        driverId,
+      },
+      orderBy: { createAt: 'asc' },
+      select: {
+        id: true,
+        shipmentNumber: true,
+        isPaused: true,
+        isCompleted: true,
+        launchDate:true,
+        way: { select: { name: true, points: true } },
+        currentPoint: { select: { name: true } },
       },
     });
   }

@@ -470,4 +470,31 @@ export class ShipmentService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
+  async getAllShipmentForDriver(
+    companyId: string,
+    page: number,
+    limit: number,
+    search?: string,
+    driverId?: string,
+  ) {
+    try {
+      const shipments = await this.shipmentRepository.getAllShipment({
+        companyId,
+        page,
+        limit,
+        isCompleted: true,
+        search,
+        driverId,
+      });
+      const shipmentCount = await this.shipmentRepository.getCountOfShipment({
+        companyId,
+        isCompleted: true,
+        driverId,
+        search,
+      });
+      return { shipments, shipmentCount };
+    } catch (error) {
+      throw new HttpException(error, HttpStatus.BAD_REQUEST);
+    }
+  }
 }

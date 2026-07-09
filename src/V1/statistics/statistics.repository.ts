@@ -92,13 +92,13 @@ export class StatisticsRepository {
   async isVisitedTableIsNotEmpty() {
     return await this.prisma.system.findFirst();
   }
-  async IncreaseNumberOfVisit(value:string) {
-     return await this.prisma.system.update({
-       where: { name: 'NUMBER_OF_VISITOR' },
-       data: {
-         value: (Number(value) + 1).toString(),
-       },
-     });
+  async IncreaseNumberOfVisit(value: string) {
+    return await this.prisma.system.update({
+      where: { name: 'NUMBER_OF_VISITOR' },
+      data: {
+        value: (Number(value) + 1).toString(),
+      },
+    });
   }
   async InitialVisitTable() {
     return await this.prisma.system.create({

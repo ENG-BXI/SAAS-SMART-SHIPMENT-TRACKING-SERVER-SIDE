@@ -326,4 +326,40 @@ export class ShipmentController {
       status: HttpStatus.OK,
     };
   }
+  @Get('finished/driver')
+  async getAllShipmentForDriver(
+    @Req() req: Request,
+    @Query('page', new ParseIntPipe({ optional: true })) pageQuery: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limitQuery: number,
+    @Query('search') search?: string,
+  ) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const page = pageQuery || 1;
+    const limit = limitQuery || 10;
+    const shipments = await this.shipmentService.getAllShipmentForDriver(
+      req.user.companyId,
+      page,
+      limit,
+      search,
+      req.user.id,
+    );
+    const totalPages = Math.ceil(shipments.shipmentCount / limit);
+    const hasNext = page < totalPages;
+    const hasPrevious = page !== 1;
+    return {
+      data: {
+        data: shipments.shipments,
+        totalCount: shipments.shipmentCount,
+        currentPage: page,
+        pageSize: limit,
+        totalPages,
+        hasNext,
+        hasPrevious,
+      },
+      message: 'Shipments fetched successfully',
+      status: HttpStatus.OK,
+    };
+  }
 }

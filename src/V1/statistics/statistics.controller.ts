@@ -47,6 +47,22 @@ export class StatisticsController {
   @Post('add-visit')
   async addVisit() {
     const addedVisit = await this.statisticsService.addVisit();
-    return addedVisit
+    return addedVisit;
+  }
+  @UseGuards(AuthGuard)
+  @Get('driver-statistics')
+  async getDriverStatistics(@Req() req: Request) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const driverStatistic = await this.statisticsService.getDriverStatistics(
+      req.user.companyId,
+      req.user.id,
+    );
+    return {
+      data: driverStatistic,
+      message: 'Manager statistics fetched successfully',
+      status: HttpStatus.OK,
+    };
   }
 }
