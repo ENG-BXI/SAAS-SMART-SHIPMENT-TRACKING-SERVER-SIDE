@@ -216,7 +216,12 @@ export class SubscriptionRepository {
     });
     return subscription;
   }
-  async updateSubscription(companyId: string, subscriptionTypeId: string) {
+  async updateSubscription(
+    companyId: string,
+    subscriptionTypeId: string,
+    public_id: string,
+    secure_url: string,
+  ) {
     const editedSubscription = await this.prisma.subscription.update({
       where: {
         companyId,
@@ -226,6 +231,8 @@ export class SubscriptionRepository {
         newType: {
           connect: { id: subscriptionTypeId },
         },
+        voucherPublicId: public_id,
+        voucherSecureUrl: secure_url,
       },
     });
     return editedSubscription;
@@ -247,12 +254,12 @@ export class SubscriptionRepository {
     });
     return SubscriptionType;
   }
-  async expireSubscriptionOfCompany(companyId: string) { 
+  async expireSubscriptionOfCompany(companyId: string) {
     await this.prisma.subscription.update({
-      where:{companyId},
-      data:{
-        status:SubscriptionStatus.expired
-      }
-    })
+      where: { companyId },
+      data: {
+        status: SubscriptionStatus.expired,
+      },
+    });
   }
 }

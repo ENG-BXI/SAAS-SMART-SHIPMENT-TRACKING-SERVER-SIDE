@@ -72,7 +72,7 @@ export class CompanyRepository {
             startDate: true,
             endDate: true,
             status: true,
-            newTypeId:true,
+            newTypeId: true,
             type: {
               select: {
                 type: true,
@@ -113,9 +113,9 @@ export class CompanyRepository {
       },
     });
   }
-  async getCompanyWithUsersWithSubscriptionInfo(companyId:string) {
+  async getCompanyWithUsersWithSubscriptionInfo(companyId: string) {
     return await this.prisma.company.findUnique({
-      where: { id:companyId },
+      where: { id: companyId },
       include: {
         users: {
           where: {
@@ -201,6 +201,8 @@ export class CompanyRepository {
     createCompanyDto: CreateCompanyDto,
     hashedPassword: string,
     subscriptionTypeId: string,
+    public_id: string,
+    secure_url: string,
   ) {
     return await this.prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
@@ -239,6 +241,8 @@ export class CompanyRepository {
           status: SubscriptionStatus.pending,
           companyId: company.id,
           typeId: subscriptionTypeId,
+          voucherPublicId: public_id,
+          voucherSecureUrl: secure_url,
         },
       });
       return { company, user, subscription };
@@ -328,6 +332,8 @@ export class CompanyRepository {
     createCompanyDto: CreateCompanyDto,
     hashedPassword: string,
     durationByMonth: number,
+    public_id: string,
+    secure_url: string,
   ) {
     return await this.prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
@@ -372,6 +378,8 @@ export class CompanyRepository {
           endDate,
           companyId: company.id,
           typeId: createCompanyDto.subscriptionType,
+          voucherPublicId: public_id,
+          voucherSecureUrl: secure_url,
         },
       });
       return { company, user, subscription };

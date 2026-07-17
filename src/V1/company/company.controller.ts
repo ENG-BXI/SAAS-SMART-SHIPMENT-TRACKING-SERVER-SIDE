@@ -12,6 +12,8 @@ import {
   ParseUUIDPipe,
   ParseIntPipe,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -30,7 +32,8 @@ import {
   CompanyListResponseDto,
 } from './dto/company-response.dto';
 import { IResponseWithPagination } from 'src/Common/interfaces/IResponseWithPagination.interface';
-import { Company } from './entities/company.entity';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { FileValidationPipe } from 'src/Common/file-validation.pipe';
 
 @ApiTags('Company')
 @Controller({ path: 'company', version: '1' })
@@ -108,6 +111,7 @@ export class CompanyControllerV1 {
    * @returns Company
    */
   @Post()
+  @UseInterceptors(FileInterceptor('receipt'))
   @ApiOperation({
     summary: 'Create a new company',
     description:
@@ -126,11 +130,12 @@ export class CompanyControllerV1 {
   // this is used From Dash on Admin
   async createCompany(
     @Body(new ValidationPipe()) createCompanyDto: CreateCompanyDto,
+    @UploadedFile(FileValidationPipe) file: Express.Multer.File,
   ) {
     if (createCompanyDto.companyPassword !== createCompanyDto.confirmPassword) {
       throw new HttpException('Password not match', HttpStatus.BAD_REQUEST);
     }
-    const company = await this.companyService.createCompany(createCompanyDto);
+    const company = await this.companyService.createCompany(createCompanyDto,file);
     return {
       data: company,
       message: 'Create Company successfully',
@@ -138,15 +143,19 @@ export class CompanyControllerV1 {
     };
   }
   @Post('request-subscription')
+  @UseInterceptors(FileInterceptor('receipt'))
   // This is used From Landing page
   async RequestSubscriptionCompany(
     @Body(new ValidationPipe()) createCompanyDto: CreateCompanyDto,
+    @UploadedFile(FileValidationPipe) file: Express.Multer.File,
   ) {
     if (createCompanyDto.companyPassword !== createCompanyDto.confirmPassword) {
       throw new HttpException('Password not match', HttpStatus.BAD_REQUEST);
     }
-    const company =
-      await this.companyService.RequestSubscriptionCompany(createCompanyDto);
+    const company = await this.companyService.RequestSubscriptionCompany(
+      createCompanyDto,
+      file,
+    );
     return {
       data: company,
       message: 'Create Company successfully',
