@@ -173,10 +173,7 @@ model shipment {
   company        company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isPaused       Boolean        @default(false)
   isCompleted    Boolean        @default(false)
-<<<<<<< Updated upstream
-=======
   createAt       DateTime       @default(now())
->>>>>>> Stashed changes
 
   @@unique([shipmentNumber, companyId])
 }
