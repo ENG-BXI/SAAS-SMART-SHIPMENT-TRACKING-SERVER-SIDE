@@ -9,6 +9,7 @@ import { subscriptionApprovedEmail } from '../email/emails/subscriptionApprovedE
 import { subscriptionUpgradeApprovedEmail } from '../email/emails/subscriptionUpgradeApprovedEmail';
 import { GatewayService } from '../gateway/gateway.service';
 import { SubscriptionEvent } from './subscription.event';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class SubscriptionService {
@@ -17,6 +18,7 @@ export class SubscriptionService {
     private companyRepository: CompanyRepository,
     private emailService: EmailService,
     private gatewayService: GatewayService,
+    private cloudinaryService: CloudinaryService,
   ) {}
   async getAllSubscription(page: number, search?: string) {
     try {
@@ -97,7 +99,12 @@ export class SubscriptionService {
       await this.subscriptionRepository.getSubscription(companyId);
     return subscription;
   }
-  async editCompanySubscription(companyId: string, subscriptionTypeId: string) {
+  async editCompanySubscription(
+    companyId: string,
+    subscriptionTypeId: string,
+    file: Express.Multer.File,
+  ) {
+    const uploadResult = await this.cloudinaryService.uploadReceiptImage(file);
     const existCompany = await this.companyRepository.isCompanyExist({
       companyId,
     });
@@ -117,6 +124,8 @@ export class SubscriptionService {
       await this.subscriptionRepository.updateSubscription(
         companyId,
         subscriptionTypeId,
+        uploadResult.public_id,
+        uploadResult.secure_url
       );
     this.gatewayService.emit(SubscriptionEvent.EDIT, editedSubscription);
     return editedSubscription;

@@ -13,6 +13,7 @@ import { companyActivatedEmail } from '../email/emails/companyActivatedEmail';
 import { GatewayService } from '../gateway/gateway.service';
 import { CompanyEvent } from './company.event';
 import { StatisticsEvent } from '../statistics/statistics.event';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 @Injectable()
 export class CompanyService {
   constructor(
@@ -20,6 +21,7 @@ export class CompanyService {
     private subscriptionRepository: SubscriptionRepository,
     private emailService: EmailService,
     private gatewayService: GatewayService,
+    private cloudinaryService: CloudinaryService,
   ) {}
   async getAllCompany({
     page,
@@ -121,8 +123,13 @@ export class CompanyService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
-  async RequestSubscriptionCompany(createCompanyDto: CreateCompanyDto) {
+  async RequestSubscriptionCompany(
+    createCompanyDto: CreateCompanyDto,
+    file: Express.Multer.File,
+  ) {
     try {
+      const uploadResult =
+        await this.cloudinaryService.uploadReceiptImage(file);
       const existingCompany = await this.companyRepository.isCompanyExist({
         companyEmail: createCompanyDto.companyEmail,
         companyName: createCompanyDto.name,
@@ -153,6 +160,8 @@ export class CompanyService {
           createCompanyDto,
           hashedPassword,
           subscriptionType.id,
+          uploadResult.public_id,
+          uploadResult.secure_url,
         );
       // Send Email
       this.emailService.sendMail(
@@ -193,8 +202,13 @@ export class CompanyService {
       throw new HttpException(error, HttpStatus.BAD_REQUEST);
     }
   }
-  async createCompany(createCompanyDto: CreateCompanyDto) {
+  async createCompany(
+    createCompanyDto: CreateCompanyDto,
+    file: Express.Multer.File,
+  ) {
     try {
+      const uploadResult =
+        await this.cloudinaryService.uploadReceiptImage(file);
       const existingCompany = await this.companyRepository.isCompanyExist({
         companyEmail: createCompanyDto.companyEmail,
         companyName: createCompanyDto.name,
@@ -225,6 +239,8 @@ export class CompanyService {
           createCompanyDto,
           hashedPassword,
           subscriptionType.durationByMonth,
+          uploadResult.public_id,
+          uploadResult.secure_url,
         );
       const ClientSideDomain = process.env.CLIENT_SIDE_DOMAIN_URL;
       await this.emailService.sendMail(

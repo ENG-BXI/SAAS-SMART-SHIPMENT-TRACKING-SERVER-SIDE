@@ -13,6 +13,7 @@ import { ShipmentModule } from './V1/shipment/shipment.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StatisticsModule } from './V1/statistics/statistics.module';
 import { GatewayModule } from './V1/gateway/gateway.module';
+import { CloudinaryModule } from './V1/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { GatewayModule } from './V1/gateway/gateway.module';
     ShipmentModule,
     PrismaModule,
     StatisticsModule,
-    GatewayModule
+    GatewayModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -14,6 +14,8 @@ import {
   UseGuards,
   Req,
   UnauthorizedException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
@@ -24,6 +26,8 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import type { Request } from 'express';
 import { CreateSubscriptionTypeDto } from './dto/CreateSubscriptionType.dto';
 import { UpdateSubscriptionTypeDto } from './dto/UpdateSubscriptionType.dto';
+import { FileValidationPipe } from 'src/Common/file-validation.pipe';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Subscription')
 @Controller({ path: 'subscription', version: '1' })
@@ -144,10 +148,13 @@ export class SubscriptionController {
   }
   @UseGuards(AuthGuard)
   @Patch('company/:subscriptionTypeId')
+  @UseInterceptors(FileInterceptor('receipt'))
+
   // Change Subscription Type For Company For Company Dashboard For Review a Request
   async editCompanySubscription(
     @Req() req: Request,
     @Param('subscriptionTypeId', ParseUUIDPipe) subscriptionTypeId: string,
+    @UploadedFile(FileValidationPipe) file: Express.Multer.File,
   ) {
     if (!req.user) {
       throw new UnauthorizedException('User not found');
@@ -156,6 +163,7 @@ export class SubscriptionController {
       await this.subscriptionService.editCompanySubscription(
         req.user.companyId,
         subscriptionTypeId,
+        file
       );
     return {
       data: editedSubscription,

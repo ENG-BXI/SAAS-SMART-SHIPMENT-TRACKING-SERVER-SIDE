@@ -39,16 +39,18 @@ model company {
 }
 
 model subscription {
-  id        String             @id @default(uuid())
-  typeId    String
-  type      SubscriptionType   @relation(fields: [typeId], references: [id], name: "current Subscription")
-  newTypeId String?
-  newType   SubscriptionType?  @relation(fields: [newTypeId], references: [id], name: "when Company Change Subscription")
-  status    SubscriptionStatus @default(pending)
-  startDate DateTime?
-  endDate   DateTime?
-  company   company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId String             @unique
+  id               String             @id @default(uuid())
+  typeId           String
+  type             SubscriptionType   @relation(fields: [typeId], references: [id], name: "current Subscription")
+  newTypeId        String?
+  newType          SubscriptionType?  @relation(fields: [newTypeId], references: [id], name: "when Company Change Subscription")
+  status           SubscriptionStatus @default(pending)
+  startDate        DateTime?
+  endDate          DateTime?
+  company          company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId        String             @unique
+  voucherPublicId  String
+  voucherSecureUrl String
 }
 
 model SubscriptionType {
@@ -171,6 +173,10 @@ model shipment {
   company        company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isPaused       Boolean        @default(false)
   isCompleted    Boolean        @default(false)
+<<<<<<< Updated upstream
+=======
+  createAt       DateTime       @default(now())
+>>>>>>> Stashed changes
 
   @@unique([shipmentNumber, companyId])
 }
